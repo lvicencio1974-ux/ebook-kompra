@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-night-900 text-legado-50;
+}
+
+.card {
+  @apply bg-night-800/60 border border-legado-700/30 rounded-2xl shadow-lg backdrop-blur-sm;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full bg-legado-500 px-5 py-2.5 text-sm font-medium text-night-900 transition hover:bg-legado-400 disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-full border border-legado-500/50 px-5 py-2.5 text-sm font-medium text-legado-200 transition hover:bg-legado-500/10 disabled:opacity-40 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-full border border-red-500/50 px-4 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/10;
+}
+
+.input {
+  @apply w-full rounded-xl border border-legado-700/40 bg-night-900/60 px-4 py-2.5 text-legado-50 placeholder:text-legado-200/30 focus:border-legado-400 focus:outline-none focus:ring-1 focus:ring-legado-400;
+}
+
+.label {
+  @apply mb-1.5 block text-sm font-medium text-legado-200/80;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full bg-legado-500/15 px-3 py-1 text-xs text-legado-200;
+}
