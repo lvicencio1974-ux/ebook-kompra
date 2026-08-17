@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Atrae con Confianza — Guía respaldada por psicología</title>
+<meta name="description" content="Tips diarios y técnicas de conexión auténtica basadas en investigación psicológica real, para construir confianza y mejores relaciones." />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <span class="badge">Basado en investigación real</span>
+      <h1>Confianza y conexión, con base científica</h1>
+      <p class="subtitle">
+        Técnicas de psicología social y de pareja —de autores como Cialdini, Gottman, Bandura y Brené Brown—
+        aplicadas a algo simple: convertirte en una mejor versión de ti mismo, no en un personaje.
+      </p>
+      <div class="hero-actions">
+        <button id="dailyTipBtn" class="btn btn-primary">Ver tip del día</button>
+        <a href="#tips" class="btn btn-ghost">Explorar todas las técnicas</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="quote" class="quote-section" aria-live="polite">
+      <p id="quoteText" class="quote-text"></p>
+      <p id="quoteAuthor" class="quote-author"></p>
+    </section>
+
+    <section id="dailyTip" class="daily-tip" hidden aria-live="polite"></section>
+
+    <section id="tips" class="tips-section">
+      <div class="tips-header">
+        <h2>Técnicas por categoría</h2>
+        <p>Elige un área para trabajar hoy. Cada técnica incluye su fuente y un paso de acción concreto.</p>
+      </div>
+
+      <div id="filters" class="filters" role="tablist" aria-label="Filtrar por categoría"></div>
+
+      <div id="tipGrid" class="tip-grid"></div>
+    </section>
+
+    <section class="principles">
+      <h2>Principios que guían esta app</h2>
+      <ul>
+        <li><strong>Autenticidad sobre manipulación.</strong> Ninguna técnica aquí busca engañar ni presionar a nadie: todas apuntan a que te muestres como realmente eres, con más confianza.</li>
+        <li><strong>Respeto y consentimiento primero.</strong> Toda interacción parte de leer y respetar a la otra persona, no de "conseguir" algo de ella.</li>
+        <li><strong>Evidencia, no mitos de internet.</strong> Cada tip cita a un psicólogo, investigador o estudio real, no consejos genéricos sin respaldo.</li>
+        <li><strong>El objetivo eres tú.</strong> La meta final es tu propio crecimiento —confianza, comunicación, inteligencia emocional— que además mejora todas tus relaciones, no solo las románticas.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Hecho para acompañarte a crecer, un paso pequeño a la vez.</p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
