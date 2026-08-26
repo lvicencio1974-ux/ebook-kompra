@@ -1,0 +1,127 @@
+// Legado Digital - backend data model.
+// Nota: SQLite no soporta enums nativos en Prisma, asi que los "enums" de este
+// esquema se modelan como String y se validan en la capa de aplicacion (src/lib/enums.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  birthDate    DateTime?
+  totpSecret   String?
+  totpEnabled  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  memberships    Membership[]
+  authoredLegacies Legacy[]
+
+}
+
+model Legacy {
+  id               String    @id @default(uuid())
+  name             String
+  authorId         String
+  status           String    @default("ACTIVE") // ACTIVE | DEATH_PENDING | DEATH_CONFIRMED
+  deathConfirmedAt DateTime?
+  createdAt        DateTime  @default(now())
+
+  // Perfil del autor: quién es, cómo suena, qué valora. Alimenta el prompt del chat
+  // (para que las respuestas suenen como él/ella) y el respaldo local sin IA.
+  bio     String?
+  traits  String? // JSON-encoded string[]
+  values  String? // JSON-encoded string[]
+  phrases String? // JSON-encoded string[]
+  humor   String?
+
+  author             User                       @relation(fields: [authorId], references: [id])
+  memberships        Membership[]
+  contentItems       ContentItem[]
+  deathVerifications DeathVerificationRequest[]
+  conversationLogs   ConversationLog[]
+}
+
+model Membership {
+  id                 String    @id @default(uuid())
+  legacyId           String
+  userId             String?
+  role               String // AUTHOR | BENEFICIARY | EXECUTOR
+  relationship       String?
+  inviteEmail        String?
+  inviteToken        String?   @unique
+  invitedAt          DateTime  @default(now())
+  acceptedAt         DateTime?
+  minAccessAge       Int?
+  conversationPaused Boolean   @default(false)
+
+  legacy Legacy @relation(fields: [legacyId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  recipientOfContent      ContentItem[]               @relation("ContentRecipient")
+  initiatedVerifications  DeathVerificationRequest[]  @relation("InitiatedVerifications")
+  secondConfirmations     DeathVerificationRequest[]  @relation("SecondConfirmations")
+  conversationLogs        ConversationLog[]
+}
+
+model ContentItem {
+  id             String    @id @default(uuid())
+  legacyId       String
+  type           String // STORY | ADVICE | MEDIA | CAPSULE
+  title          String
+  category       String?
+  textContent    String?
+  transcript     String?
+  mediaPath      String?
+  mediaMimeType  String?
+  mediaKind      String? // PHOTO | VIDEO | AUDIO
+  visibility     String    @default("POSTMORTEM") // IMMEDIATE | POSTMORTEM | DATE | AGE
+  visibleFromDate DateTime?
+  visibleFromAge Int?
+  recipientMembershipId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  legacy              Legacy      @relation(fields: [legacyId], references: [id])
+  recipientMembership Membership? @relation("ContentRecipient", fields: [recipientMembershipId], references: [id])
+}
+
+model DeathVerificationRequest {
+  id                           String    @id @default(uuid())
+  legacyId                     String
+  initiatedByMembershipId      String
+  certificatePath              String
+  certificateMimeType          String
+  status                       String    @default("PENDING") // PENDING | CONFIRMED | REJECTED | CANCELLED
+  secondConfirmerMembershipId  String?
+  secondConfirmedAt            DateTime?
+  gracePeriodDays              Int
+  unlockAt                     DateTime?
+  cancelledAt                  DateTime?
+  createdAt                    DateTime  @default(now())
+
+  legacy                   Legacy      @relation(fields: [legacyId], references: [id])
+  initiatedByMembership    Membership  @relation("InitiatedVerifications", fields: [initiatedByMembershipId], references: [id])
+  secondConfirmerMembership Membership? @relation("SecondConfirmations", fields: [secondConfirmerMembershipId], references: [id])
+}
+
+model ConversationLog {
+  id                 String   @id @default(uuid())
+  legacyId           String
+  askedByMembershipId String
+  question           String
+  answer             String
+  usedContentIds     String // JSON-encoded array of ContentItem ids cited in the answer
+  engine             String // "claude" | "local-matcher"
+  createdAt          DateTime @default(now())
+
+  legacy           Legacy     @relation(fields: [legacyId], references: [id])
+  askedByMembership Membership @relation(fields: [askedByMembershipId], references: [id])
+}
