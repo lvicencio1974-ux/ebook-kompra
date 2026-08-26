@@ -1,105 +1,99 @@
-import { useEffect, useMemo, useState } from 'react'
-import { v4 as uuid } from 'uuid'
-import { adviceStore, mediaStore } from '../db'
-import { GUIDED_PROMPTS, type AdviceEntry, type MediaItem, type MediaKind } from '../types'
+import { useMemo, useState } from 'react'
+import { useLegacy } from '../context/LegacyContext'
+import { useContent } from '../hooks/useContent'
+import { GUIDED_PROMPTS } from '../constants/guidedPrompts'
+import type { ContentItem, MediaKind } from '../api/types'
 import Recorder from '../components/Recorder'
 import MediaPlayer from '../components/MediaPlayer'
+import { ApiError } from '../api/client'
 
 const CATEGORY_LABELS = Array.from(new Map(GUIDED_PROMPTS.map((p) => [p.category, p.categoryLabel])))
 
 export default function Advice() {
-  const [entries, setEntries] = useState<AdviceEntry[]>([])
-  const [media, setMedia] = useState<Record<string, MediaItem>>({})
+  const { activeLegacy } = useLegacy()
+  const { items, create, update, remove } = useContent(activeLegacy?.id)
   const [activePrompt, setActivePrompt] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [textDraft, setTextDraft] = useState('')
-  const [recordKind, setRecordKind] = useState<MediaKind>('video')
-  const [capturedBlob, setCapturedBlob] = useState<{ blob: Blob; mimeType: string } | null>(null)
+  const [recordKind, setRecordKind] = useState<MediaKind>('VIDEO')
+  const [captured, setCaptured] = useState<{ blob: Blob; mimeType: string } | null>(null)
   const [customPrompt, setCustomPrompt] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    refresh()
-  }, [])
-
-  async function refresh() {
-    const all = await adviceStore.all()
-    setEntries(all)
-    const items = await mediaStore.all()
-    const map: Record<string, MediaItem> = {}
-    for (const m of items) map[m.id] = m
-    setMedia(map)
-  }
-
+  const entries = items.filter((i) => i.type === 'ADVICE')
   const entryByPrompt = useMemo(() => {
-    const map = new Map<string, AdviceEntry>()
-    for (const e of entries) map.set(e.prompt, e)
+    const map = new Map<string, ContentItem>()
+    for (const e of entries) map.set(e.title, e)
     return map
   }, [entries])
 
   function openPrompt(category: string, prompt: string) {
     setActiveCategory(category)
     setActivePrompt(prompt)
-    const existing = entryByPrompt.get(prompt)
-    setTextDraft(existing?.textResponse ?? '')
-    setCapturedBlob(null)
+    setTextDraft(entryByPrompt.get(prompt)?.textContent ?? '')
+    setCaptured(null)
+    setError(null)
   }
 
   function closePrompt() {
     setActivePrompt(null)
     setActiveCategory(null)
-    setCapturedBlob(null)
+    setCaptured(null)
     setTextDraft('')
   }
 
   async function saveEntry() {
     if (!activePrompt || !activeCategory) return
-    const existing = entryByPrompt.get(activePrompt)
-    let mediaId = existing?.mediaId
+    setBusy(true)
+    setError(null)
+    try {
+      const existing = entryByPrompt.get(activePrompt)
 
-    if (capturedBlob) {
-      const kind: MediaKind = capturedBlob.mimeType.startsWith('audio')
-        ? 'audio'
-        : capturedBlob.mimeType.startsWith('video')
-        ? 'video'
-        : 'photo'
-      const item: MediaItem = {
-        id: uuid(),
-        kind,
-        mimeType: capturedBlob.mimeType,
-        blob: capturedBlob.blob,
-        title: activePrompt,
-        createdAt: Date.now(),
+      if (existing && !captured) {
+        // Sin una grabación nueva, solo actualizamos el texto del consejo ya guardado.
+        await update(existing.id, { textContent: textDraft || undefined })
+      } else {
+        // Con una grabación nueva no se puede reemplazar el archivo de un consejo existente
+        // (la API no soporta editar el adjunto), así que se reemplaza el registro completo.
+        if (existing) await remove(existing.id)
+        const kind: MediaKind | undefined = captured
+          ? captured.mimeType.startsWith('audio')
+            ? 'AUDIO'
+            : captured.mimeType.startsWith('video')
+            ? 'VIDEO'
+            : 'PHOTO'
+          : undefined
+        await create(
+          {
+            type: 'ADVICE',
+            title: activePrompt,
+            category: activeCategory,
+            textContent: textDraft || undefined,
+            mediaKind: kind,
+            visibility: 'POSTMORTEM',
+          },
+          captured ? { blob: captured.blob, filename: `consejo.${captured.mimeType.split('/')[1] || 'webm'}` } : undefined
+        )
       }
-      await mediaStore.save(item)
-      mediaId = item.id
+      closePrompt()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el consejo.')
+    } finally {
+      setBusy(false)
     }
-
-    const entry: AdviceEntry = {
-      id: existing?.id ?? uuid(),
-      category: activeCategory,
-      prompt: activePrompt,
-      textResponse: textDraft,
-      mediaId,
-      createdAt: existing?.createdAt ?? Date.now(),
-      done: true,
-    }
-    await adviceStore.save(entry)
-    closePrompt()
-    refresh()
   }
 
-  async function saveCustom() {
+  function saveCustom() {
     const prompt = customPrompt.trim()
     if (!prompt) return
     setCustomPrompt('')
     openPrompt('personalizado', prompt)
   }
 
-  async function removeEntry(entry: AdviceEntry) {
+  async function removeEntry(entry: ContentItem) {
     if (!confirm('¿Eliminar este consejo?')) return
-    await adviceStore.remove(entry.id)
-    if (entry.mediaId) await mediaStore.remove(entry.mediaId)
-    refresh()
+    await remove(entry.id)
   }
 
   return (
@@ -115,12 +109,7 @@ export default function Advice() {
       <div className="card p-5">
         <label className="label">¿Quieres responder a una pregunta propia?</label>
         <div className="flex gap-2">
-          <input
-            className="input"
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            placeholder="Escribe tu propia pregunta o tema..."
-          />
+          <input className="input" value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} placeholder="Escribe tu propia pregunta o tema..." />
           <button className="btn-secondary shrink-0" onClick={saveCustom}>
             Responder
           </button>
@@ -137,14 +126,10 @@ export default function Advice() {
                 <button
                   key={p.prompt}
                   onClick={() => openPrompt(p.category, p.prompt)}
-                  className={`card p-4 text-left transition hover:border-legado-400/50 ${
-                    existing ? 'border-legado-400/40' : ''
-                  }`}
+                  className={`card p-4 text-left transition hover:border-legado-400/50 ${existing ? 'border-legado-400/40' : ''}`}
                 >
                   <p className="text-sm text-legado-100">{p.prompt}</p>
-                  <p className="mt-2 text-xs text-legado-300">
-                    {existing ? '✓ Respondido — toca para editar' : 'Sin responder'}
-                  </p>
+                  <p className="mt-2 text-xs text-legado-300">{existing ? '✓ Respondido — toca para editar' : 'Sin responder'}</p>
                 </button>
               )
             })}
@@ -162,60 +147,40 @@ export default function Advice() {
 
             <div>
               <label className="label">Respuesta en texto (opcional si grabas video o audio)</label>
-              <textarea
-                className="input min-h-[100px]"
-                value={textDraft}
-                onChange={(e) => setTextDraft(e.target.value)}
-                placeholder="Escribe tu respuesta..."
-              />
+              <textarea className="input min-h-[100px]" value={textDraft} onChange={(e) => setTextDraft(e.target.value)} placeholder="Escribe tu respuesta..." />
             </div>
 
             <div>
               <label className="label">O grábate en video/audio</label>
               <div className="flex gap-2 mb-3">
-                <button
-                  className={`btn-secondary !py-1 ${recordKind === 'video' ? 'bg-legado-500/20' : ''}`}
-                  onClick={() => setRecordKind('video')}
-                >
+                <button className={`btn-secondary !py-1 ${recordKind === 'VIDEO' ? 'bg-legado-500/20' : ''}`} onClick={() => setRecordKind('VIDEO')}>
                   Video
                 </button>
-                <button
-                  className={`btn-secondary !py-1 ${recordKind === 'audio' ? 'bg-legado-500/20' : ''}`}
-                  onClick={() => setRecordKind('audio')}
-                >
+                <button className={`btn-secondary !py-1 ${recordKind === 'AUDIO' ? 'bg-legado-500/20' : ''}`} onClick={() => setRecordKind('AUDIO')}>
                   Audio
                 </button>
               </div>
-              {!capturedBlob && (
-                <Recorder kind={recordKind} onCapture={(blob, mimeType) => setCapturedBlob({ blob, mimeType })} />
-              )}
-              {capturedBlob && (
+              {!captured && <Recorder kind={recordKind} onCapture={(blob, mimeType) => setCaptured({ blob, mimeType })} />}
+              {captured && (
                 <div className="space-y-2">
-                  <MediaPlayer
-                    item={{
-                      id: 'preview',
-                      kind: recordKind,
-                      mimeType: capturedBlob.mimeType,
-                      blob: capturedBlob.blob,
-                      title: 'preview',
-                      createdAt: Date.now(),
-                    }}
-                  />
-                  <button className="btn-secondary" onClick={() => setCapturedBlob(null)}>
+                  <p className="text-xs text-legado-200/50">Grabación lista para guardar ({captured.mimeType}).</p>
+                  <button className="btn-secondary" onClick={() => setCaptured(null)}>
                     Grabar de nuevo
                   </button>
                 </div>
               )}
-              {!capturedBlob && entryByPrompt.get(activePrompt)?.mediaId && media[entryByPrompt.get(activePrompt)!.mediaId!] && (
+              {!captured && entryByPrompt.get(activePrompt)?.hasMedia && activeLegacy && (
                 <div className="mt-3">
                   <p className="text-xs text-legado-200/50 mb-1">Grabación actual:</p>
-                  <MediaPlayer item={media[entryByPrompt.get(activePrompt)!.mediaId!]} />
+                  <MediaPlayer legacyId={activeLegacy.id} item={entryByPrompt.get(activePrompt)!} />
                 </div>
               )}
             </div>
 
+            {error && <p className="text-sm text-red-300">{error}</p>}
+
             <div className="flex gap-3 pt-2">
-              <button className="btn-primary" onClick={saveEntry}>
+              <button className="btn-primary" onClick={saveEntry} disabled={busy}>
                 Guardar
               </button>
               <button className="btn-secondary" onClick={closePrompt}>
@@ -234,7 +199,7 @@ export default function Advice() {
               <div key={entry.id} className="card p-4 flex items-start justify-between gap-4">
                 <div>
                   <span className="chip mb-1">{entry.category}</span>
-                  <p className="text-sm text-legado-100">{entry.prompt}</p>
+                  <p className="text-sm text-legado-100">{entry.title}</p>
                 </div>
                 <button className="btn-danger shrink-0" onClick={() => removeEntry(entry)}>
                   Eliminar

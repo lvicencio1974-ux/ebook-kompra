@@ -1,46 +1,69 @@
-import { useEffect, useState } from 'react'
-import { v4 as uuid } from 'uuid'
-import { storiesStore } from '../db'
-import type { Story } from '../types'
+import { useState } from 'react'
+import { useLegacy } from '../context/LegacyContext'
+import { useContent } from '../hooks/useContent'
+import type { ContentVisibility } from '../api/types'
+import VisibilityPicker from '../components/VisibilityPicker'
+import { ApiError } from '../api/client'
 
 const CATEGORIES = ['infancia', 'familia', 'amor', 'trabajo', 'aprendizajes', 'otro']
 
+interface Draft {
+  title: string
+  category: string
+  textContent: string
+  visibility: ContentVisibility
+  visibleFromDate: string
+  visibleFromAge: string
+  recipientMembershipId: string
+}
+
+const emptyDraft = (): Draft => ({
+  title: '',
+  category: 'familia',
+  textContent: '',
+  visibility: 'POSTMORTEM',
+  visibleFromDate: '',
+  visibleFromAge: '',
+  recipientMembershipId: '',
+})
+
 export default function Stories() {
-  const [stories, setStories] = useState<Story[]>([])
-  const [editing, setEditing] = useState<Story | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const { activeLegacy } = useLegacy()
+  const { items, create, remove } = useContent(activeLegacy?.id)
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    refresh()
-  }, [])
-
-  function refresh() {
-    storiesStore.all().then(setStories)
-  }
-
-  function startNew() {
-    setEditing({ id: uuid(), title: '', content: '', category: 'familia', createdAt: Date.now() })
-    setShowForm(true)
-  }
-
-  function startEdit(story: Story) {
-    setEditing(story)
-    setShowForm(true)
-  }
+  const stories = items.filter((i) => i.type === 'STORY')
+  const recipients = activeLegacy?.memberships.filter((m) => m.role === 'BENEFICIARY' && m.acceptedAt) ?? []
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
-    if (!editing) return
-    await storiesStore.save(editing)
-    setShowForm(false)
-    setEditing(null)
-    refresh()
+    if (!draft) return
+    setBusy(true)
+    setError(null)
+    try {
+      await create({
+        type: 'STORY',
+        title: draft.title,
+        category: draft.category,
+        textContent: draft.textContent,
+        visibility: draft.visibility,
+        visibleFromDate: draft.visibleFromDate || undefined,
+        visibleFromAge: draft.visibleFromAge ? Number(draft.visibleFromAge) : undefined,
+        recipientMembershipId: draft.recipientMembershipId || undefined,
+      })
+      setDraft(null)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar la historia.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  async function remove(id: string) {
+  async function handleRemove(id: string) {
     if (!confirm('¿Eliminar esta historia? No se puede deshacer.')) return
-    await storiesStore.remove(id)
-    refresh()
+    await remove(id)
   }
 
   return (
@@ -52,32 +75,28 @@ export default function Stories() {
             Escribe los momentos, anécdotas y aprendizajes que quieres que tus hijos conserven.
           </p>
         </div>
-        {!showForm && (
-          <button className="btn-primary shrink-0" onClick={startNew}>
+        {!draft && (
+          <button className="btn-primary shrink-0" onClick={() => setDraft(emptyDraft())}>
             + Nueva historia
           </button>
         )}
       </div>
 
-      {showForm && editing && (
+      {draft && (
         <form onSubmit={save} className="card p-6 space-y-4">
           <div>
             <label className="label">Título</label>
             <input
               className="input"
-              value={editing.title}
-              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               placeholder="Ej. El día que nació tu hermana"
               required
             />
           </div>
           <div>
             <label className="label">Categoría</label>
-            <select
-              className="input"
-              value={editing.category}
-              onChange={(e) => setEditing({ ...editing, category: e.target.value })}
-            >
+            <select className="input" value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })}>
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -89,24 +108,29 @@ export default function Stories() {
             <label className="label">Cuéntala</label>
             <textarea
               className="input min-h-[160px]"
-              value={editing.content}
-              onChange={(e) => setEditing({ ...editing, content: e.target.value })}
+              value={draft.textContent}
+              onChange={(e) => setDraft({ ...draft, textContent: e.target.value })}
               placeholder="Escribe con calma, como si se lo contaras en persona..."
               required
             />
           </div>
+
+          <VisibilityPicker
+            visibility={draft.visibility}
+            visibleFromDate={draft.visibleFromDate}
+            visibleFromAge={draft.visibleFromAge}
+            recipientMembershipId={draft.recipientMembershipId}
+            recipients={recipients}
+            onChange={(fields) => setDraft({ ...draft, ...fields })}
+          />
+
+          {error && <p className="text-sm text-red-300">{error}</p>}
+
           <div className="flex gap-3">
-            <button type="submit" className="btn-primary">
+            <button type="submit" className="btn-primary" disabled={busy}>
               Guardar historia
             </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                setShowForm(false)
-                setEditing(null)
-              }}
-            >
+            <button type="button" className="btn-secondary" onClick={() => setDraft(null)}>
               Cancelar
             </button>
           </div>
@@ -114,9 +138,7 @@ export default function Stories() {
       )}
 
       <div className="space-y-4">
-        {stories.length === 0 && !showForm && (
-          <p className="text-legado-200/50 text-sm">Todavía no has escrito ninguna historia.</p>
-        )}
+        {stories.length === 0 && !draft && <p className="text-legado-200/50 text-sm">Todavía no has escrito ninguna historia.</p>}
         {stories.map((story) => (
           <div key={story.id} className="card p-5">
             <div className="flex items-start justify-between gap-4">
@@ -124,18 +146,11 @@ export default function Stories() {
                 <span className="chip mb-2">{story.category}</span>
                 <h3 className="font-serif text-lg text-legado-100">{story.title}</h3>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button className="btn-secondary !py-1.5 !px-3 text-xs" onClick={() => startEdit(story)}>
-                  Editar
-                </button>
-                <button className="btn-danger" onClick={() => remove(story.id)}>
-                  Eliminar
-                </button>
-              </div>
+              <button className="btn-danger shrink-0" onClick={() => handleRemove(story.id)}>
+                Eliminar
+              </button>
             </div>
-            <p className="mt-3 text-sm text-legado-200/70 whitespace-pre-wrap leading-relaxed">
-              {story.content}
-            </p>
+            <p className="mt-3 text-sm text-legado-200/70 whitespace-pre-wrap leading-relaxed">{story.textContent}</p>
           </div>
         ))}
       </div>

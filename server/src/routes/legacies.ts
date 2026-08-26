@@ -5,9 +5,14 @@ import { prisma } from '../lib/prisma.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { loadMembership, requireRole } from '../middleware/loadMembership.js'
 import { MEMBERSHIP_ROLES } from '../lib/enums.js'
+import { serializeLegacy } from '../lib/legacySerializer.js'
 
 export const legaciesRouter = Router()
 legaciesRouter.use(requireAuth)
+
+const membershipWithUser = {
+  memberships: { include: { user: { select: { id: true, name: true, email: true } } } },
+} as const
 
 const createLegacySchema = z.object({ name: z.string().min(1) })
 
@@ -23,25 +28,54 @@ legaciesRouter.post('/', async (req, res) => {
         create: { role: 'AUTHOR', userId: req.userId!, acceptedAt: new Date() },
       },
     },
-    include: { memberships: true },
+    include: membershipWithUser,
   })
-  res.status(201).json(legacy)
+  res.status(201).json(serializeLegacy(legacy))
 })
 
 legaciesRouter.get('/', async (req, res) => {
   const legacies = await prisma.legacy.findMany({
     where: { memberships: { some: { userId: req.userId!, acceptedAt: { not: null } } } },
-    include: { memberships: true },
+    include: membershipWithUser,
   })
-  res.json(legacies)
+  res.json(legacies.map(serializeLegacy))
 })
 
 legaciesRouter.get('/:legacyId', loadMembership, async (req, res) => {
   const legacy = await prisma.legacy.findUniqueOrThrow({
     where: { id: req.params.legacyId },
-    include: { memberships: true },
+    include: membershipWithUser,
   })
-  res.json(legacy)
+  res.json(serializeLegacy(legacy))
+})
+
+const updateLegacySchema = z.object({
+  name: z.string().min(1).optional(),
+  bio: z.string().optional(),
+  humor: z.string().optional(),
+  traits: z.array(z.string()).optional(),
+  values: z.array(z.string()).optional(),
+  phrases: z.array(z.string()).optional(),
+})
+
+// El autor edita su propio perfil: quién es, qué valora, cómo habla. Esto alimenta el
+// prompt del chat y la respuesta de respaldo cuando no hay una fuente exacta.
+legaciesRouter.put('/:legacyId', loadMembership, requireRole('AUTHOR'), async (req, res) => {
+  const parsed = updateLegacySchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message })
+
+  const { traits, values, phrases, ...rest } = parsed.data
+  const legacy = await prisma.legacy.update({
+    where: { id: req.params.legacyId },
+    data: {
+      ...rest,
+      traits: traits ? JSON.stringify(traits) : undefined,
+      values: values ? JSON.stringify(values) : undefined,
+      phrases: phrases ? JSON.stringify(phrases) : undefined,
+    },
+    include: membershipWithUser,
+  })
+  res.json(serializeLegacy(legacy))
 })
 
 const inviteSchema = z.object({

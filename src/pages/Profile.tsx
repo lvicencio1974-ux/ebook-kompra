@@ -1,28 +1,48 @@
 import { useEffect, useState } from 'react'
-import { profileStore } from '../db'
-import { emptyProfile, type Profile as ProfileType } from '../types'
+import { useLegacy } from '../context/LegacyContext'
+import { legaciesApi, ApiError } from '../api/client'
 import TagInput from '../components/TagInput'
 
 export default function Profile() {
-  const [profile, setProfile] = useState<ProfileType>(emptyProfile())
+  const { activeLegacy, refresh } = useLegacy()
+  const [name, setName] = useState('')
+  const [bio, setBio] = useState('')
+  const [humor, setHumor] = useState('')
+  const [traits, setTraits] = useState<string[]>([])
+  const [values, setValues] = useState<string[]>([])
+  const [phrases, setPhrases] = useState<string[]>([])
   const [saved, setSaved] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    profileStore.get().then((p) => {
-      if (p) setProfile(p)
-      setLoading(false)
-    })
-  }, [])
+    if (!activeLegacy) return
+    setName(activeLegacy.name)
+    setBio(activeLegacy.bio ?? '')
+    setHumor(activeLegacy.humor ?? '')
+    setTraits(activeLegacy.traits)
+    setValues(activeLegacy.values)
+    setPhrases(activeLegacy.phrases)
+  }, [activeLegacy])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    await profileStore.save(profile)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    if (!activeLegacy) return
+    setBusy(true)
+    setError(null)
+    try {
+      await legaciesApi.update(activeLegacy.id, { name, bio, humor, traits, values, phrases })
+      await refresh()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar el perfil.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  if (loading) return null
+  if (!activeLegacy) return null
 
   return (
     <div className="space-y-8">
@@ -37,38 +57,15 @@ export default function Profile() {
       <form onSubmit={handleSave} className="card p-6 space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">Tu nombre</label>
-            <input
-              className="input"
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              placeholder="Ej. Luis Vicencio"
-            />
-          </div>
-          <div>
-            <label className="label">¿Cómo te dicen tus hijos?</label>
-            <input
-              className="input"
-              value={profile.relationship}
-              onChange={(e) => setProfile({ ...profile, relationship: e.target.value })}
-              placeholder="Ej. Papá, Mamá, Abuelo..."
-            />
-          </div>
-          <div>
-            <label className="label">Fecha de nacimiento</label>
-            <input
-              type="date"
-              className="input"
-              value={profile.birthDate}
-              onChange={(e) => setProfile({ ...profile, birthDate: e.target.value })}
-            />
+            <label className="label">Nombre del legado</label>
+            <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
           <div>
             <label className="label">Tu estilo de humor</label>
             <input
               className="input"
-              value={profile.humor}
-              onChange={(e) => setProfile({ ...profile, humor: e.target.value })}
+              value={humor}
+              onChange={(e) => setHumor(e.target.value)}
               placeholder="Ej. Bromista, irónico, cariñoso..."
             />
           </div>
@@ -78,35 +75,20 @@ export default function Profile() {
           <label className="label">Cuéntanos quién eres</label>
           <textarea
             className="input min-h-[120px]"
-            value={profile.bio}
-            onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
             placeholder="Tu historia, de dónde vienes, qué te hace ser tú..."
           />
         </div>
 
-        <TagInput
-          label="Características de tu personalidad"
-          placeholder="Ej. paciente, curioso, terco..."
-          values={profile.traits}
-          onChange={(traits) => setProfile({ ...profile, traits })}
-        />
+        <TagInput label="Características de tu personalidad" placeholder="Ej. paciente, curioso, terco..." values={traits} onChange={setTraits} />
+        <TagInput label="Tus valores más importantes" placeholder="Ej. honestidad, familia, esfuerzo..." values={values} onChange={setValues} />
+        <TagInput label="Frases o dichos que sueles decir" placeholder="Ej. Todo pasa por algo..." values={phrases} onChange={setPhrases} />
 
-        <TagInput
-          label="Tus valores más importantes"
-          placeholder="Ej. honestidad, familia, esfuerzo..."
-          values={profile.values}
-          onChange={(values) => setProfile({ ...profile, values })}
-        />
-
-        <TagInput
-          label="Frases o dichos que sueles decir"
-          placeholder="Ej. Todo pasa por algo..."
-          values={profile.phrases}
-          onChange={(phrases) => setProfile({ ...profile, phrases })}
-        />
+        {error && <p className="text-sm text-red-300">{error}</p>}
 
         <div className="flex items-center gap-3">
-          <button type="submit" className="btn-primary">
+          <button type="submit" className="btn-primary" disabled={busy}>
             Guardar perfil
           </button>
           {saved && <span className="text-sm text-legado-300">Guardado ✓</span>}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MediaKind } from '../types'
+import type { MediaKind } from '../api/types'
 
 interface Props {
   kind: MediaKind
@@ -37,10 +37,10 @@ export default function Recorder({ kind, onCapture }: Props) {
     setError(null)
     try {
       const constraints: MediaStreamConstraints =
-        kind === 'audio' ? { audio: true } : { audio: kind === 'video', video: true }
+        kind === 'AUDIO' ? { audio: true } : { audio: kind === 'VIDEO', video: true }
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
-      if (videoRef.current && kind !== 'audio') {
+      if (videoRef.current && kind !== 'AUDIO') {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
@@ -60,7 +60,7 @@ export default function Recorder({ kind, onCapture }: Props) {
   function startRecording() {
     if (!streamRef.current) return
     chunksRef.current = []
-    const mimeType = kind === 'audio' ? 'audio/webm' : 'video/webm'
+    const mimeType = kind === 'AUDIO' ? 'audio/webm' : 'video/webm'
     const recorder = new MediaRecorder(streamRef.current, { mimeType })
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data)
@@ -99,16 +99,16 @@ export default function Recorder({ kind, onCapture }: Props) {
     e.target.value = ''
   }
 
-  const kindLabel = kind === 'photo' ? 'foto' : kind === 'video' ? 'video' : 'audio'
+  const kindLabel = kind === 'PHOTO' ? 'foto' : kind === 'VIDEO' ? 'video' : 'audio'
 
   return (
     <div className="space-y-3">
       {error && <p className="text-sm text-red-300">{error}</p>}
 
-      {active && kind !== 'audio' && (
+      {active && kind !== 'AUDIO' && (
         <video ref={videoRef} muted className="w-full max-w-md rounded-xl bg-black" playsInline />
       )}
-      {active && kind === 'audio' && (
+      {active && kind === 'AUDIO' && (
         <div className="flex items-center gap-2 text-legado-200/70 text-sm">
           <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> Micrófono activo
         </div>
@@ -118,10 +118,10 @@ export default function Recorder({ kind, onCapture }: Props) {
       <div className="flex flex-wrap gap-2">
         {!active && (
           <button type="button" className="btn-secondary" onClick={startCamera}>
-            Activar {kind === 'audio' ? 'micrófono' : 'cámara'}
+            Activar {kind === 'AUDIO' ? 'micrófono' : 'cámara'}
           </button>
         )}
-        {active && kind !== 'photo' && !recording && (
+        {active && kind !== 'PHOTO' && !recording && (
           <button type="button" className="btn-primary" onClick={startRecording}>
             Empezar a grabar {kindLabel}
           </button>
@@ -131,7 +131,7 @@ export default function Recorder({ kind, onCapture }: Props) {
             Detener grabación
           </button>
         )}
-        {active && kind === 'photo' && (
+        {active && kind === 'PHOTO' && (
           <button type="button" className="btn-primary" onClick={capturePhoto}>
             Tomar foto
           </button>
@@ -147,7 +147,7 @@ export default function Recorder({ kind, onCapture }: Props) {
         <input
           ref={fileInputRef}
           type="file"
-          accept={kind === 'photo' ? 'image/*' : kind === 'video' ? 'video/*' : 'audio/*'}
+          accept={kind === 'PHOTO' ? 'image/*' : kind === 'VIDEO' ? 'video/*' : 'audio/*'}
           className="hidden"
           onChange={handleFile}
         />

@@ -34,6 +34,14 @@ model Legacy {
   deathConfirmedAt DateTime?
   createdAt        DateTime  @default(now())
 
+  // Perfil del autor: quién es, cómo suena, qué valora. Alimenta el prompt del chat
+  // (para que las respuestas suenen como él/ella) y el respaldo local sin IA.
+  bio     String?
+  traits  String? // JSON-encoded string[]
+  values  String? // JSON-encoded string[]
+  phrases String? // JSON-encoded string[]
+  humor   String?
+
   author             User                       @relation(fields: [authorId], references: [id])
   memberships        Membership[]
   contentItems       ContentItem[]

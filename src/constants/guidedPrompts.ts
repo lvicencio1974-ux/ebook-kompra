@@ -1,59 +1,3 @@
-export interface Profile {
-  id: 'main'
-  name: string
-  relationship: string
-  birthDate: string
-  bio: string
-  traits: string[]
-  values: string[]
-  phrases: string[]
-  humor: string
-  updatedAt: number
-}
-
-export const emptyProfile = (): Profile => ({
-  id: 'main',
-  name: '',
-  relationship: '',
-  birthDate: '',
-  bio: '',
-  traits: [],
-  values: [],
-  phrases: [],
-  humor: '',
-  updatedAt: Date.now(),
-})
-
-export interface Story {
-  id: string
-  title: string
-  content: string
-  category: string
-  createdAt: number
-}
-
-export type MediaKind = 'photo' | 'video' | 'audio'
-
-export interface MediaItem {
-  id: string
-  kind: MediaKind
-  mimeType: string
-  blob: Blob
-  title: string
-  createdAt: number
-  linkedAdviceId?: string
-}
-
-export interface AdviceEntry {
-  id: string
-  category: string
-  prompt: string
-  textResponse: string
-  mediaId?: string
-  createdAt: number
-  done: boolean
-}
-
 export interface GuidedPrompt {
   category: string
   categoryLabel: string
@@ -80,12 +24,3 @@ export const GUIDED_PROMPTS: GuidedPrompt[] = [
   { category: 'despedida', categoryLabel: 'Un mensaje final', prompt: '¿Qué es lo último que te gustaría que supiera siempre?' },
   { category: 'despedida', categoryLabel: 'Un mensaje final', prompt: '¿Cómo te gustaría que te recordara?' },
 ]
-
-export interface Backup {
-  version: 1
-  exportedAt: number
-  profile: Profile | null
-  stories: Story[]
-  advice: AdviceEntry[]
-  media: { id: string; kind: MediaKind; mimeType: string; title: string; createdAt: number; linkedAdviceId?: string; dataUrl: string }[]
-}

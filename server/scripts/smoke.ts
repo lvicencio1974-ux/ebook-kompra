@@ -260,6 +260,7 @@ async function main() {
     process.exit(1)
   }
   console.log('\nTodas las verificaciones pasaron.')
+  process.exit(0)
 }
 
 main().catch((err) => {

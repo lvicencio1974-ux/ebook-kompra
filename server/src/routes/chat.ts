@@ -6,8 +6,9 @@ import { loadMembership } from '../middleware/loadMembership.js'
 import { isContentVisible } from '../lib/contentVisibility.js'
 import { findRelevantContent } from '../lib/matcher.js'
 import { generateAvatarReply, isClaudeConfigured } from '../lib/claude.js'
-import { GRIEF_RESOURCES, NO_SOURCE_FALLBACK, recreationDisclaimer } from '../lib/safeguards.js'
+import { GRIEF_RESOURCES, noSourceFallbackWithProfile, recreationDisclaimer } from '../lib/safeguards.js'
 import { finalizeAllDueForLegacy } from '../lib/deathVerification.js'
+import { serializeLegacy } from '../lib/legacySerializer.js'
 
 export const chatRouter = Router({ mergeParams: true })
 chatRouter.use(requireAuth, loadMembership)
@@ -32,10 +33,11 @@ chatRouter.post('/', async (req: Request<LegacyParams>, res: Response) => {
 
   await finalizeAllDueForLegacy(req.params.legacyId)
 
-  const legacy = await prisma.legacy.findUniqueOrThrow({
+  const legacyRaw = await prisma.legacy.findUniqueOrThrow({
     where: { id: req.params.legacyId },
     include: { author: true },
   })
+  const legacy = serializeLegacy(legacyRaw)
   const membership = req.membership!
 
   if (membership.role !== 'AUTHOR') {
@@ -61,11 +63,15 @@ chatRouter.post('/', async (req: Request<LegacyParams>, res: Response) => {
   let engine: 'claude' | 'local-matcher'
 
   if (relevant.length === 0) {
-    answer = NO_SOURCE_FALLBACK
+    answer = noSourceFallbackWithProfile(legacy.phrases, legacy.values)
     engine = 'local-matcher'
   } else if (isClaudeConfigured()) {
     try {
-      answer = await generateAvatarReply(legacy.author.name, parsed.data.question, relevant)
+      answer = await generateAvatarReply(
+        { name: legacy.author.name, bio: legacy.bio, humor: legacy.humor, traits: legacy.traits, values: legacy.values, phrases: legacy.phrases },
+        parsed.data.question,
+        relevant
+      )
       engine = 'claude'
     } catch (err) {
       console.error('[chat] Claude falló, usando respaldo local:', err)

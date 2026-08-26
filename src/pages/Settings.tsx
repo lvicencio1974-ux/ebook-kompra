@@ -1,123 +1,69 @@
-import { useRef, useState } from 'react'
-import { buildBackup, downloadBackup, parseBackupFile, restoreBackup } from '../utils/backup'
-import { wipeAll } from '../db'
-import type { Backup } from '../types'
+import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
+import { useLegacy } from '../context/LegacyContext'
+import { chatApi, ApiError } from '../api/client'
 
 export default function Settings() {
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [status, setStatus] = useState<string | null>(null)
-  const [pendingBackup, setPendingBackup] = useState<Backup | null>(null)
+  const { user, logout } = useAuth()
+  const { activeLegacy, activeMembership, refresh } = useLegacy()
+  const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function handleExport() {
+  async function togglePause(paused: boolean) {
+    if (!activeLegacy) return
     setBusy(true)
-    setStatus(null)
+    setError(null)
     try {
-      const backup = await buildBackup()
-      downloadBackup(backup)
-      setStatus('Respaldo descargado correctamente.')
+      await chatApi.setPaused(activeLegacy.id, paused)
+      await refresh()
     } catch (err) {
-      setStatus('Ocurrió un error al generar el respaldo.')
+      setError(err instanceof ApiError ? err.message : 'No se pudo actualizar.')
     } finally {
       setBusy(false)
     }
-  }
-
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      const backup = await parseBackupFile(file)
-      setPendingBackup(backup)
-      setStatus(null)
-    } catch (err) {
-      setStatus('No se pudo leer ese archivo. ¿Es un respaldo válido de Legado Digital?')
-    }
-    e.target.value = ''
-  }
-
-  async function handleRestore(mode: 'merge' | 'replace') {
-    if (!pendingBackup) return
-    if (mode === 'replace' && !confirm('Esto reemplazará todos los datos actuales. ¿Continuar?')) return
-    setBusy(true)
-    try {
-      await restoreBackup(pendingBackup, mode)
-      setStatus('Respaldo restaurado. Recarga la página para ver los cambios.')
-      setPendingBackup(null)
-    } catch (err) {
-      setStatus('Ocurrió un error al restaurar el respaldo.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleWipe() {
-    if (!confirm('Esto borrará TODO lo guardado en este dispositivo: perfil, historias, consejos, fotos y videos. Esta acción no se puede deshacer. ¿Continuar?')) return
-    if (!confirm('¿Estás completamente seguro? Te recomendamos exportar un respaldo antes.')) return
-    await wipeAll()
-    setStatus('Todos los datos fueron eliminados. Recarga la página.')
   }
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="font-serif text-3xl text-legado-100">Ajustes y respaldo</h2>
-        <p className="mt-2 text-legado-200/70 max-w-2xl">
-          Todo lo que escribes, grabas y subes se guarda únicamente en este navegador. No se envía a
-          ningún servidor. Por eso es muy importante que exportes un respaldo y lo guardes en un
-          lugar seguro (o lo compartas con la persona de confianza que deba tenerlo).
-        </p>
+        <h2 className="font-serif text-3xl text-legado-100">Ajustes</h2>
       </div>
 
-      {status && <div className="card p-4 text-sm text-legado-100">{status}</div>}
-
-      <section className="card p-6 space-y-3">
-        <h3 className="font-medium text-legado-100">Exportar respaldo</h3>
-        <p className="text-sm text-legado-200/60">
-          Descarga un archivo con tu perfil, historias, consejos, fotos y videos.
-        </p>
-        <button className="btn-primary" disabled={busy} onClick={handleExport}>
-          Descargar respaldo
+      <section className="card p-6 space-y-2">
+        <h3 className="font-medium text-legado-100">Tu cuenta</h3>
+        <p className="text-sm text-legado-200/70">{user?.name}</p>
+        <p className="text-sm text-legado-200/50">{user?.email}</p>
+        <button className="btn-secondary mt-3" onClick={logout}>
+          Cerrar sesión
         </button>
       </section>
 
-      <section className="card p-6 space-y-3">
-        <h3 className="font-medium text-legado-100">Restaurar o importar respaldo</h3>
-        <p className="text-sm text-legado-200/60">
-          Sube un archivo de respaldo previamente exportado.
-        </p>
-        <button className="btn-secondary" onClick={() => fileRef.current?.click()}>
-          Elegir archivo de respaldo
-        </button>
-        <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={handleFile} />
+      {activeLegacy && activeMembership && activeMembership.role !== 'AUTHOR' && (
+        <section className="card p-6 space-y-3">
+          <h3 className="font-medium text-legado-100">Modo conversación</h3>
+          <p className="text-sm text-legado-200/70">
+            Si en algún momento sientes que hablar aquí no te hace bien, puedes pausarlo cuando
+            quieras. Esto no borra tu acceso a la biblioteca de recuerdos.
+          </p>
+          {error && <p className="text-sm text-red-300">{error}</p>}
+          {activeMembership.conversationPaused ? (
+            <button className="btn-primary" disabled={busy} onClick={() => togglePause(false)}>
+              Reactivar modo conversación
+            </button>
+          ) : (
+            <button className="btn-secondary" disabled={busy} onClick={() => togglePause(true)}>
+              Pausar modo conversación
+            </button>
+          )}
+        </section>
+      )}
 
-        {pendingBackup && (
-          <div className="mt-3 space-y-2 border-t border-legado-700/20 pt-3">
-            <p className="text-sm text-legado-200/70">
-              Respaldo con {pendingBackup.stories.length} historias, {pendingBackup.advice.length}{' '}
-              consejos y {pendingBackup.media.length} archivos multimedia, exportado el{' '}
-              {new Date(pendingBackup.exportedAt).toLocaleString()}.
-            </p>
-            <div className="flex gap-2">
-              <button className="btn-primary" disabled={busy} onClick={() => handleRestore('merge')}>
-                Combinar con lo actual
-              </button>
-              <button className="btn-secondary" disabled={busy} onClick={() => handleRestore('replace')}>
-                Reemplazar todo
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="card p-6 space-y-3 border-red-500/20">
-        <h3 className="font-medium text-red-300">Zona de peligro</h3>
-        <p className="text-sm text-legado-200/60">
-          Elimina permanentemente todos los datos guardados en este dispositivo.
+      <section className="card p-6 space-y-2 text-sm text-legado-200/60">
+        <h3 className="font-medium text-legado-100">Privacidad</h3>
+        <p>
+          Tus datos, fotos, videos y consejos se guardan cifrados en el servidor de este legado. No
+          se comparten con nadie que no tenga una invitación aceptada.
         </p>
-        <button className="btn-danger" onClick={handleWipe}>
-          Borrar todos mis datos
-        </button>
       </section>
     </div>
   )

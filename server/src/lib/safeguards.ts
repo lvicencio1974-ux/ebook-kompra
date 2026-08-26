@@ -23,3 +23,20 @@ export const GRIEF_RESOURCES = [
 
 export const NO_SOURCE_FALLBACK =
   'Sobre eso no dejé nada grabado. Prueba a preguntarme sobre otra cosa, o revisa la biblioteca de recuerdos.'
+
+/** Used when nothing relevant was recorded but the author left phrases/values on their profile. */
+export function noSourceFallbackWithProfile(phrases: string[], values: string[]): string {
+  const phrase = phrases.length ? phrases[Math.floor(Math.random() * phrases.length)] : null
+  const value = values.length ? values[Math.floor(Math.random() * values.length)] : null
+
+  const lines = ['Sobre eso no dejé nada grabado exactamente, pero quiero que sepas algo que siempre fue verdad para mí:']
+  if (phrase) {
+    lines.push(`"${phrase}"`)
+  } else if (value) {
+    lines.push(`Para mí, algo así siempre pasaba por lo mismo: ${value}.`)
+  } else {
+    return NO_SOURCE_FALLBACK
+  }
+  lines.push('Prueba a explorar la biblioteca de recuerdos, quizás encuentres algo más cercano a lo que buscas.')
+  return lines.join('\n\n')
+}

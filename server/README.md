@@ -6,8 +6,7 @@ producto: un autor graba su historia, valores y consejos en vida; sus beneficiar
 modo de conversación una vez que un albacea de confianza verifica el fallecimiento.
 
 Este backend corre localmente sobre SQLite — no depende de infraestructura en la nube.
-El frontend en `../src` (la app "Legado Digital" original, 100% local con IndexedDB)
-todavía no está conectado a este backend; esa integración es el siguiente paso.
+El frontend en `../src` consume esta API (ver `../README.md` para correr ambos juntos).
 
 ## Poner en marcha
 
@@ -101,9 +100,9 @@ código necesita cambiar para activarlos.
 
 ## Qué falta (fuera del alcance de esta primera versión)
 
-- Conectar el frontend (`../src`) a esta API en vez de IndexedDB local.
 - Envío real de invitaciones por correo (hoy el enlace de invitación se devuelve en la
-  respuesta de la API y se registra en el log del servidor).
+  respuesta de la API y se muestra en la pantalla de "Personas invitadas" para copiar y
+  compartir manualmente).
 - Activar los proveedores de voz/avatar cuando haya cuentas y API keys.
-- Revisión legal de cumplimiento normativo (GDPR u otras leyes locales de datos
-  biométricos) antes de un despliegue con usuarios reales.
+- Hosting real (hoy SQLite local) y revisión legal de cumplimiento normativo (GDPR u
+  otras leyes locales de datos biométricos) antes de un despliegue con usuarios reales.
