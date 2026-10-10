@@ -54,6 +54,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0; background: var(--bg); color: var(--fg);
   font-family: var(--font-body); font-size: 1rem; line-height: 1.5;
@@ -102,6 +103,14 @@ header p { max-width: 38ch; }
 .btn:hover { border-color: var(--accent); }
 .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; min-width: 132px; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.vol-block { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid transparent; }
+@media (max-width: 400px) { .vol-block { grid-template-columns: minmax(0, 1fr); } }
+.vol-block.highlight { border-color: var(--accent); }
+.prep { display: flex; flex-direction: column; gap: 12px; }
+.prep ol { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; font-size: .92rem; }
+.check { display: flex; gap: 8px; align-items: center; font-size: .88rem; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--accent); width: 18px; height: 18px; }
 
 /* Lugar */
 .tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -191,10 +200,35 @@ section { display: flex; flex-direction: column; gap: 14px; }
         <div class="progress"><i id="bar"></i></div>
         <div class="time-row mono muted"><span id="elapsed">0:00</span><span id="total">20:00</span></div>
       </div>
-      <div class="controls">
+      <div class="vol-block" id="volBlock">
+        <div class="field">
+          <label for="vol">Volumen del pulso <output id="volOut">30%</output></label>
+          <input type="range" id="vol" min="0" max="100" value="30">
+        </div>
+        <div class="field">
+          <label for="noiseVol">Volumen del fondo <output id="noiseVolOut">30%</output></label>
+          <input type="range" id="noiseVol" min="0" max="100" value="30">
+        </div>
+      </div>
+      <div class="prep" id="prep" hidden>
+        <p class="label">Antes de empezar</p>
+        <ol>
+          <li><b>Ponte los audífonos</b> y toca “Probar audífonos”. El tono debe sonar primero en el oído izquierdo y luego en el derecho.</li>
+          <li><b>Ajusta el volumen</b> mientras suena la muestra. Debe oírse suave, como un murmullo. Usa las barras de arriba o los botones de volumen del celular.</li>
+        </ol>
+        <div class="controls">
+          <button class="btn" id="testBtn" type="button">Probar audífonos</button>
+        </div>
+        <label class="check" for="skipPrep"><input type="checkbox" id="skipPrep"> No mostrar este paso la próxima vez</label>
+        <div class="controls">
+          <button class="btn primary" id="goBtn" type="button">Comenzar sesión</button>
+          <button class="btn" id="cancelPrep" type="button">Cancelar</button>
+        </div>
+      </div>
+      <div class="controls" id="mainControls">
         <button class="btn primary" id="playBtn" type="button">Comenzar</button>
         <button class="btn" id="stopBtn" type="button" disabled>Terminar</button>
-        <button class="btn" id="testBtn" type="button">Probar audífonos</button>
+        <button class="btn" id="setupBtn" type="button">Ajustar volumen</button>
       </div>
     </div>
   </div>
@@ -225,20 +259,12 @@ section { display: flex; flex-direction: column; gap: 14px; }
     <h2 id="mixTitle">Mezcla</h2>
     <div class="mixer">
       <div class="field">
-        <label for="vol">Volumen del pulso <output id="volOut">40%</output></label>
-        <input type="range" id="vol" min="0" max="100" value="40">
-      </div>
-      <div class="field">
         <label for="noise">Fondo</label>
         <select id="noise">
           <option value="none">Sin fondo</option>
           <option value="pink" selected>Ruido rosa (lluvia suave)</option>
           <option value="brown">Ruido marrón (mar lejano)</option>
         </select>
-      </div>
-      <div class="field">
-        <label for="noiseVol">Volumen del fondo <output id="noiseVolOut">25%</output></label>
-        <input type="range" id="noiseVol" min="0" max="100" value="25">
       </div>
       <div class="field">
         <label for="breathMode">Guía de respiración</label>
@@ -363,6 +389,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
   if (!CONTEXTS[ctxKey]) ctxKey = "casa";
   let selected = null;
   let audio = null; // { ac, master, beatGain, noiseGain, oscL, oscR, noiseSrc, start, session }
+  let preview = null; // muestra de sonido mientras se ajusta el volumen
   let state = "idle"; // idle | playing | paused
   let tick = null, wakeLock = null;
 
@@ -403,7 +430,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
     vol.max = cap ? Math.round(cap * 100) : 100;
     if (+vol.value > +vol.max) vol.value = vol.max;
     $("volOut").textContent = vol.value + "%";
-    if (audio) audio.beatGain.gain.setTargetAtTime(beatLevel(), audio.ac.currentTime, 0.1);
+    const g = live(); if (g) g.beatGain.gain.setTargetAtTime(beatLevel(), g.ac.currentTime, 0.1);
   }
   function fmt(sec) { sec = Math.max(0, Math.round(sec)); return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
 
@@ -439,8 +466,10 @@ section { display: flex; flex-direction: column; gap: 14px; }
   }
 
   // ---------- Audio ----------
-  function beatLevel() { return (+$("vol").value / 100) * 0.35; }
-  function noiseLevel() { return (+$("noiseVol").value / 100) * 0.5; }
+  // Curva cuadrática: los primeros tramos de la barra suben poco, como percibe el oído.
+  function beatLevel() { const v = +$("vol").value / 100; return v * v * 0.3; }
+  function noiseLevel() { const v = +$("noiseVol").value / 100; return v * v * 0.45; }
+  const live = () => audio || preview;
 
   function makeNoise(ac, type) {
     const len = ac.sampleRate * 4, buf = ac.createBuffer(2, len, ac.sampleRate);
@@ -463,26 +492,24 @@ section { display: flex; flex-direction: column; gap: 14px; }
     const src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.loopEnd = (len - 2000) / ac.sampleRate;
     return src;
   }
-  function setNoise() {
-    if (!audio) return;
-    const { ac } = audio;
-    if (audio.noiseSrc) { try { audio.noiseSrc.stop(); } catch {} audio.noiseSrc.disconnect(); audio.noiseSrc = null; }
+  function setNoise(g = live()) {
+    if (!g) return;
+    const { ac } = g;
+    if (g.noiseSrc) { try { g.noiseSrc.stop(); } catch {} g.noiseSrc.disconnect(); g.noiseSrc = null; }
     const type = $("noise").value;
     if (type === "none") return;
     const src = makeNoise(ac, type);
     const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = type === "brown" ? 900 : 4000;
-    src.connect(lp).connect(audio.noiseGain);
+    src.connect(lp).connect(g.noiseGain);
     src.start();
-    audio.noiseSrc = src;
+    g.noiseSrc = src;
   }
 
   function elapsed() { return audio ? audio.ac.currentTime - audio.start : 0; }
 
-  async function start() {
-    const s = currentSession();
-    if (!s) return;
+  function buildGraph(s) {
     const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) { toast("Tu navegador no permite generar audio. Prueba con Chrome, Safari o Firefox actualizados."); return; }
+    if (!AC) { toast("Tu navegador no permite generar audio. Prueba con Chrome, Safari o Firefox actualizados."); return null; }
     const ac = new AC();
     const master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
     const beatGain = ac.createGain(); beatGain.gain.value = beatLevel(); beatGain.connect(master);
@@ -494,15 +521,58 @@ section { display: flex; flex-direction: column; gap: 14px; }
     const t0 = ac.currentTime + 0.05;
     oscL.frequency.setValueAtTime(s.carrier, t0);
     oscR.frequency.setValueAtTime(s.carrier + s.beat[0], t0);
+    oscL.start(t0); oscR.start(t0);
+    const g = { ac, master, beatGain, noiseGain, oscL, oscR, noiseSrc: null, t0 };
+    setNoise(g);
+    return g;
+  }
+
+  // ---------- Preparación: audífonos y volumen ----------
+  async function startPreview() {
+    stopPreview();
+    const s = currentSession(); if (!s) return;
+    const g = buildGraph(s); if (!g) return;
+    g.master.gain.setValueAtTime(0, g.t0);
+    g.master.gain.linearRampToValueAtTime(1, g.t0 + 1.5);
+    preview = g;
+    if (g.ac.state === "suspended") await g.ac.resume();
+  }
+  function stopPreview() {
+    if (!preview) return;
+    const { ac, master } = preview; preview = null;
+    const now = ac.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setValueAtTime(master.gain.value, now);
+    master.gain.linearRampToValueAtTime(0, now + 0.2);
+    setTimeout(() => { try { ac.close(); } catch {} }, 300);
+  }
+  function openPrep() {
+    if (store.get("skipPrep", false)) { start(); return; }
+    $("prep").hidden = false; $("mainControls").hidden = true;
+    $("volBlock").classList.add("highlight");
+    $("breathText").textContent = "Muestra";
+    startPreview();
+  }
+  function closePrep() {
+    $("prep").hidden = true; $("mainControls").hidden = false;
+    $("volBlock").classList.remove("highlight");
+    $("breathText").textContent = "Listo";
+    stopPreview();
+  }
+
+  async function start() {
+    const s = currentSession();
+    if (!s) return;
+    const g = buildGraph(s); if (!g) return;
+    const { ac, master, oscR, t0 } = g;
     if (s.ramp && s.beat[0] !== s.beat[1]) oscR.frequency.linearRampToValueAtTime(s.carrier + s.beat[1], t0 + s.ramp * 60);
-    const dur = s.min * 60, fadeIn = Math.min(20, dur / 6), fadeOut = Math.min(30, dur / 5);
+    // Entrada suave (8 s): el volumen ya lo eligió la persona en la muestra.
+    const dur = s.min * 60, fadeIn = Math.min(8, dur / 6), fadeOut = Math.min(30, dur / 5);
     master.gain.setValueAtTime(0, t0);
     master.gain.linearRampToValueAtTime(1, t0 + fadeIn);
     master.gain.setValueAtTime(1, t0 + dur - fadeOut);
     master.gain.linearRampToValueAtTime(0, t0 + dur);
-    oscL.start(t0); oscR.start(t0);
-    audio = { ac, master, beatGain, noiseGain, oscL, oscR, noiseSrc: null, start: t0, session: s, ctxKey, counted: 0 };
-    setNoise();
+    audio = Object.assign(g, { start: t0, session: s, ctxKey, counted: 0 });
     if (ac.state === "suspended") await ac.resume();
     state = "playing";
     requestWake();
@@ -544,7 +614,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
   function updateButtons() {
     $("playBtn").textContent = state === "idle" ? "Comenzar" : state === "playing" ? "Pausar" : "Continuar";
     $("stopBtn").disabled = state === "idle";
-    $("testBtn").disabled = state !== "idle";
+    $("setupBtn").hidden = state !== "idle";
   }
   async function requestWake() {
     try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch { wakeLock = null; }
@@ -554,13 +624,18 @@ section { display: flex; flex-direction: column; gap: 14px; }
   async function testHeadphones() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
-    const ac = new AC();
+    const own = !preview;
+    const ac = own ? new AC() : preview.ac;
     if (ac.state === "suspended") await ac.resume();
+    const level = Math.max(0.01, beatLevel() * 1.5);
+    const pm = preview && preview.master;
+    if (pm) { pm.gain.cancelScheduledValues(ac.currentTime); pm.gain.setTargetAtTime(0, ac.currentTime, 0.05); }
+    $("testBtn").disabled = true;
     const merger = ac.createChannelMerger(2); merger.connect(ac.destination);
     const play = (ch, at) => {
       const o = ac.createOscillator(), g = ac.createGain();
       o.frequency.value = 440; g.gain.setValueAtTime(0, at);
-      g.gain.linearRampToValueAtTime(0.15, at + 0.05); g.gain.setValueAtTime(0.15, at + 0.9); g.gain.linearRampToValueAtTime(0, at + 1);
+      g.gain.linearRampToValueAtTime(level, at + 0.05); g.gain.setValueAtTime(level, at + 0.9); g.gain.linearRampToValueAtTime(0, at + 1);
       o.connect(g).connect(merger, 0, ch); o.start(at); o.stop(at + 1.05);
     };
     const t = ac.currentTime + 0.05;
@@ -569,7 +644,12 @@ section { display: flex; flex-direction: column; gap: 14px; }
     play(0, t);
     setTimeout(() => ($("breathText").textContent = "Derecho"), 1300);
     play(1, t + 1.3);
-    setTimeout(() => { $("breathText").textContent = "Listo"; ac.close(); }, 2600);
+    setTimeout(() => {
+      $("testBtn").disabled = false;
+      $("breathText").textContent = $("prep").hidden ? "Listo" : "Muestra";
+      if (own) ac.close();
+      else if (preview && preview.master === pm) pm.gain.setTargetAtTime(1, ac.currentTime, 0.3);
+    }, 2600);
   }
 
   // ---------- Orbe de respiración ----------
@@ -637,6 +717,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
     store.set("sel:" + ctxKey, selected.id);
     $("sessions").querySelectorAll(".session").forEach(x => x.setAttribute("aria-pressed", x === b));
     if (audio) { finish(false); toast("Sesión cambiada. Pulsa Comenzar cuando quieras."); }
+    if (preview) startPreview();
     showSession();
   });
   ["cBeat", "cCarrier", "cMin"].forEach(id => $(id).addEventListener("input", () => {
@@ -646,19 +727,28 @@ section { display: flex; flex-direction: column; gap: 14px; }
     if (!audio) showSession();
   }));
   $("vol").addEventListener("input", () => {
-    $("volOut").textContent = $("vol").value + "%";
-    if (audio) audio.beatGain.gain.setTargetAtTime(beatLevel(), audio.ac.currentTime, 0.1);
+    $("volOut").textContent = $("vol").value + "%"; store.set("vol", +$("vol").value);
+    const g = live(); if (g) g.beatGain.gain.setTargetAtTime(beatLevel(), g.ac.currentTime, 0.1);
   });
   $("noiseVol").addEventListener("input", () => {
-    $("noiseVolOut").textContent = $("noiseVol").value + "%";
-    if (audio) audio.noiseGain.gain.setTargetAtTime(noiseLevel(), audio.ac.currentTime, 0.1);
+    $("noiseVolOut").textContent = $("noiseVol").value + "%"; store.set("noiseVol", +$("noiseVol").value);
+    const g = live(); if (g) g.noiseGain.gain.setTargetAtTime(noiseLevel(), g.ac.currentTime, 0.1);
   });
-  $("noise").addEventListener("change", setNoise);
-  $("playBtn").addEventListener("click", () => state === "idle" ? start() : togglePause());
+  $("noise").addEventListener("change", () => { store.set("noise", $("noise").value); setNoise(); });
+  $("playBtn").addEventListener("click", () => state === "idle" ? openPrep() : togglePause());
+  $("setupBtn").addEventListener("click", () => { store.set("skipPrep", false); $("skipPrep").checked = false; openPrep(); });
+  $("goBtn").addEventListener("click", () => {
+    store.set("skipPrep", $("skipPrep").checked);
+    closePrep(); start();
+  });
+  $("cancelPrep").addEventListener("click", closePrep);
   $("stopBtn").addEventListener("click", () => finish(false));
   $("testBtn").addEventListener("click", testHeadphones);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && state === "playing") requestWake(); });
 
+  $("vol").value = store.get("vol", 30); $("noiseVol").value = store.get("noiseVol", 30);
+  $("noiseVolOut").textContent = $("noiseVol").value + "%";
+  const savedNoise = store.get("noise", null); if (savedNoise) $("noise").value = savedNoise;
   renderTabs(); renderSessions(); renderStats(); updateButtons();
   requestAnimationFrame(draw);
 })();
