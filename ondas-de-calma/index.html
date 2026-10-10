@@ -2,6 +2,15 @@
 <html lang="es">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1820">
+<meta name="description" content="Pulsos binaurales y respiración guiada para relajarte en casa, en el trabajo o caminando.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calma">
 <!-- APP -->
 <title>Ondas de Calma</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -655,4 +664,52 @@ section { display: flex; flex-direction: column; gap: 14px; }
 })();
 </script>
 <!-- /APP -->
+<!-- Instalación como app (PWA) -->
+<style>
+.install { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; padding: 12px 14px; font-size: .92rem; }
+.install p { flex: 1 1 220px; min-width: 0; }
+</style>
+<script>
+(() => {
+  if ("serviceWorker" in navigator) {
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (standalone) return;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem("odc:installDismissed") === "1"; } catch {}
+  if (dismissed) return;
+
+  const header = document.querySelector("header");
+  const box = document.createElement("div");
+  box.className = "install"; box.hidden = true;
+  box.innerHTML = '<p id="installText"></p><div class="controls"><button class="btn primary" id="installBtn" type="button">Instalar</button><button class="btn" id="installClose" type="button">Ahora no</button></div>';
+  header.after(box);
+  const close = () => { box.hidden = true; try { localStorage.setItem("odc:installDismissed", "1"); } catch {} };
+  document.getElementById("installClose").addEventListener("click", close);
+
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    document.getElementById("installText").textContent = "Instálala en tu iPhone: en Safari toca Compartir y luego “Agregar a inicio”.";
+    document.getElementById("installBtn").hidden = true;
+    box.hidden = false;
+    return;
+  }
+  let deferred = null;
+  addEventListener("beforeinstallprompt", e => {
+    e.preventDefault(); deferred = e;
+    document.getElementById("installText").textContent = "Instala Ondas de Calma en tu celular y úsala aunque no tengas internet.";
+    box.hidden = false;
+  });
+  document.getElementById("installBtn").addEventListener("click", async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice.catch(() => null);
+    deferred = null; box.hidden = true;
+  });
+  addEventListener("appinstalled", () => { box.hidden = true; });
+})();
+</script>
 </html>
