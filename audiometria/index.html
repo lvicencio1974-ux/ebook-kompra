@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Audiometría Tonal</title>
+<meta name="theme-color" content="#0d6b70">
+<meta name="description" content="Audiometría tonal de 250 a 8000 Hz con informe y recomendaciones.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una columna clínica angosta; cada paso del examen es una "hoja" del protocolo, el audiograma es la pieza central. */
+:root {
+  --bg: #eef2f3;
+  --surface: #ffffff;
+  --sunk: #e4eaec;
+  --ink: #13222b;
+  --muted: #566a75;
+  --line: #cfd9dd;
+  --accent: #0d6b70;
+  --accent-ink: #ffffff;
+  --right: #c42b2b;
+  --left: #1c5bbd;
+  --ok: #24764a;
+  --warn: #a35f00;
+  --bad: #b3221b;
+  --band: #0d6b70;
+  --font-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1418; --surface: #152026; --sunk: #1b2930; --ink: #e3ebee; --muted: #93a6b0;
+    --line: #2a3b44; --accent: #4db3ad; --accent-ink: #062022; --right: #ff6e6e; --left: #73a9ff;
+    --ok: #5cc48b; --warn: #f0a742; --bad: #ff7b6f; --band: #4db3ad; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1418; --surface: #152026; --sunk: #1b2930; --ink: #e3ebee; --muted: #93a6b0;
+  --line: #2a3b44; --accent: #4db3ad; --accent-ink: #062022; --right: #ff6e6e; --left: #73a9ff;
+  --ok: #5cc48b; --warn: #f0a742; --bad: #ff7b6f; --band: #4db3ad; color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 64px; }
+h1, h2, h3 { font-family: var(--font-display); font-stretch: 85%; line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.9rem, 5vw, 2.7rem); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 1.45rem; font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 0.875rem; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.stack { display: flex; flex-direction: column; gap: 14px; }
+.stack-lg { display: flex; flex-direction: column; gap: 28px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.grid2 > * { min-width: 0; }
+
+/* Cabecera */
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-stretch: 80%; font-size: 1.1rem; letter-spacing: 0.02em; }
+.brand svg { flex: none; }
+.steps { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.steps span { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; color: var(--muted); border: 1px solid var(--line); }
+.steps span.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+@media (max-width: 560px) { .steps { display: none; } }
+/* Hojas */
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+.sheet + .sheet { margin-top: 0; }
+.note { background: var(--sunk); border-radius: 8px; padding: 12px 14px; font-size: 0.92rem; }
+.note.warn { border-left: 4px solid var(--warn); }
+.note.bad { border-left: 4px solid var(--bad); }
+.note.ok { border-left: 4px solid var(--ok); }
+
+/* Botones */
+button { font: inherit; cursor: pointer; }
+.btn { appearance: none; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); padding: 11px 18px; border-radius: 8px; font-weight: 700; font-size: 0.98rem; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.quiet { background: transparent; color: var(--muted); border-color: var(--line); font-weight: 400; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Formularios */
+label.f { display: flex; flex-direction: column; gap: 5px; font-weight: 700; font-size: 0.92rem; }
+label.f span.hint { font-weight: 400; color: var(--muted); font-size: 0.82rem; }
+input[type=text], input[type=number], select {
+  font: inherit; font-weight: 400; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 7px; padding: 9px 11px; width: 100%;
+}
+fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 14px; margin: 0; min-width: 0; }
+legend { font-weight: 700; font-size: 0.92rem; padding: 0 6px; }
+.checks { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px 16px; }
+.checks label, .radios label { display: flex; gap: 9px; align-items: flex-start; font-size: 0.94rem; cursor: pointer; }
+.checks input, .radios input { margin-top: 4px; accent-color: var(--accent); width: 17px; height: 17px; flex: none; }
+.radios { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+
+/* Calibración */
+.calstep { display: grid; grid-template-columns: 34px 1fr; gap: 14px; padding-block: 16px; border-top: 1px solid var(--line); }
+.calstep:first-of-type { border-top: 0; padding-top: 4px; }
+.calstep .n { font-family: var(--font-mono); font-weight: 600; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--sunk); color: var(--accent); }
+.calstep.done .n { background: var(--accent); color: var(--accent-ink); }
+.calstep > div { min-width: 0; }
+.ear-r { color: var(--right); font-weight: 700; }
+.ear-l { color: var(--left); font-weight: 700; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+/* Prueba */
+.test-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.earbadge { font-family: var(--font-display); font-stretch: 80%; font-weight: 800; font-size: 1.6rem; }
+.freqread { font-family: var(--font-mono); font-size: 1.05rem; color: var(--muted); }
+.bar { height: 6px; background: var(--sunk); border-radius: 6px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.respond-zone { display: grid; place-items: center; padding-block: 20px; }
+.respond {
+  width: min(62vw, 230px); aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+  border: 3px solid var(--accent); background: var(--surface); color: var(--accent);
+  font-family: var(--font-display); font-stretch: 80%; font-weight: 800; font-size: 1.35rem; line-height: 1.15;
+  display: grid; place-items: center; text-align: center; padding: 18px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 10%, transparent);
+  transition: transform .08s, background .15s, color .15s;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.respond small { display: block; font-family: var(--font-body); font-weight: 400; font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+.respond.hit { background: var(--accent); color: var(--accent-ink); transform: scale(0.97); }
+.respond.hit small { color: var(--accent-ink); }
+.status-line { min-height: 1.5em; text-align: center; color: var(--muted); font-size: 0.92rem; }
+
+/* Audiograma */
+.audiogram { width: 100%; height: auto; display: block; }
+.audiogram .grid line { stroke: var(--line); stroke-width: 1; }
+.audiogram .grid line.major { stroke: var(--muted); stroke-opacity: .45; }
+.audiogram text { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.audiogram text.band { font-family: var(--font-body); font-size: 10.5px; }
+.audiogram .band-rect { fill: var(--band); }
+.audiogram .r { stroke: var(--right); fill: none; }
+.audiogram .l { stroke: var(--left); fill: none; }
+.audiogram .exp { stroke: var(--muted); stroke-dasharray: 5 4; fill: none; stroke-width: 1.5; }
+.audiogram .mk-bg { fill: var(--surface); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem; color: var(--muted); }
+.legend b { font-family: var(--font-mono); }
+.figure { overflow-x: auto; }
+
+/* Informe */
+.verdict { display: grid; grid-template-columns: 8px 1fr; border-radius: var(--r); overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+.verdict > i { background: var(--ok); }
+.verdict.l1 > i { background: var(--accent); }
+.verdict.l2 > i { background: var(--warn); }
+.verdict.l3 > i { background: var(--bad); }
+.verdict > div { padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.pill { display: inline-block; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 99px; border: 1px solid currentColor; }
+.pill.ok { color: var(--ok); } .pill.warn { color: var(--warn); } .pill.bad { color: var(--bad); } .pill.acc { color: var(--accent); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-mono); font-weight: 600; font-size: 0.72rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; font-size: 0.93rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; min-width: 0; }
+.reco { display: flex; flex-direction: column; gap: 10px; }
+.reco-item { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.reco-item:first-child { border-top: 0; padding-top: 0; }
+ul.tips { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 7px; }
+ul.tips li::marker { color: var(--accent); }
+details { border-top: 1px solid var(--line); padding-block: 12px; }
+details summary { cursor: pointer; font-family: var(--font-display); font-stretch: 85%; font-weight: 700; font-size: 1.1rem; }
+details[open] summary { margin-bottom: 10px; }
+ol.refs { margin: 0; padding-left: 1.4em; font-size: 0.86rem; color: var(--muted); display: flex; flex-direction: column; gap: 5px; }
+.history-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-block: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.example-tag { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; background: var(--warn); color: var(--surface); padding: 2px 8px; border-radius: 4px; }
+.install { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--r); padding: 12px 14px; margin-bottom: 20px; font-size: .94rem; }
+.install p { flex: 1 1 220px; min-width: 0; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 0.9rem; z-index: 20; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print {
+  body { background: #fff; color: #000; }
+  .top, .no-print, .toast { display: none !important; }
+  .sheet, .verdict { border-color: #bbb; break-inside: avoid; }
+  details { display: block; } details > summary { list-style: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="install no-print" id="install-box" hidden>
+  <p id="install-text"></p>
+  <div class="row"><button class="btn" id="install-btn" type="button">Instalar</button><button class="btn quiet" id="install-close" type="button">Ahora no</button></div>
+</div>
+<header class="top">
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="9" r="4.5" fill="none" stroke="var(--right)" stroke-width="2"/><path d="M15 14l7 7M22 14l-7 7" stroke="var(--left)" stroke-width="2"/></svg>
+    Audiometría Tonal
+  </div>
+  <nav class="steps" aria-label="Etapas">
+    <span data-step="intro">Inicio</span><span data-step="datos">Datos</span><span data-step="cal">Volumen</span><span data-step="test">Prueba</span><span data-step="report">Informe</span>
+  </nav>
+</header>
+
+<!-- ===================== INICIO ===================== -->
+<section id="scr-intro" class="stack-lg">
+  <div class="stack">
+    <p class="eyebrow">Audiometría tonal liminar por vía aérea · 250 a 8000 Hz</p>
+    <h1>Mida su umbral auditivo en cada oído, frecuencia por frecuencia</h1>
+    <p style="max-width:62ch">La prueba presenta tonos puros a distintas intensidades en cada oído y busca el sonido más débil que usted alcanza a oír, con el método de Hughson‑Westlake modificado que usan las audiometrías clínicas (ASHA 2005, ISO 8253‑1). Al terminar obtiene su audiograma, el grado de audición según la OMS, la búsqueda de la muesca típica del daño por ruido y una recomendación concreta: si conviene consultar a un otorrinolaringólogo o acudir a la mutualidad de su empresa.</p>
+    <div class="row">
+      <button class="btn" id="btn-start">Comenzar evaluación</button>
+      <button class="btn ghost" id="btn-sample">Ver informe de ejemplo</button>
+    </div>
+  </div>
+
+  <div class="sheet stack">
+    <div class="row" style="justify-content:space-between"><h3>Así se ve un audiograma</h3><span class="example-tag">Ejemplo</span></div>
+    <p class="small muted">Trabajador de 45 años con 15 años en una planta con ruido. Los umbrales caen a 4000 Hz y se recuperan a 8000 Hz: es la muesca característica de la hipoacusia inducida por ruido.</p>
+    <div class="figure"><svg class="audiogram" id="ag-intro" role="img" aria-label="Audiograma de ejemplo"></svg></div>
+    <div class="legend"><span><b class="ear-r">O</b> Oído derecho</span><span><b class="ear-l">X</b> Oído izquierdo</span><span>‑ ‑ ‑ Mediana esperada para la edad (ISO 7029)</span></div>
+  </div>
+
+  <div class="grid2">
+    <div class="sheet stack">
+      <h3>Lo que necesita</h3>
+      <ul class="tips">
+        <li>Audífonos o fonos <b>con cable</b>, idealmente cerrados sobre la oreja. Los Bluetooth sirven, pero son menos precisos.</li>
+        <li>Una habitación silenciosa: sin televisión, ventilador ni conversación cerca.</li>
+        <li>Entre 5 y 10 minutos sin interrupciones.</li>
+        <li>Idealmente, 14 horas sin exposición a ruido fuerte antes de la prueba, para evitar una pérdida temporal.</li>
+      </ul>
+    </div>
+    <div class="sheet stack">
+      <h3>Alcance de esta prueba</h3>
+      <p class="small">Es un tamizaje auditivo serio, pero no reemplaza una audiometría en cabina con un audiómetro calibrado. Su teléfono o computador no tiene calibración certificada, no se mide la vía ósea ni se aplica enmascaramiento. Las revisiones sistemáticas muestran que la audiometría automatizada concuerda con la manual dentro de unos 5 a 10 dB cuando el equipo está calibrado (Mahomed et al., 2013). Use el resultado para decidir si consultar, no para un diagnóstico.</p>
+    </div>
+  </div>
+
+  <div class="sheet stack" id="history-box" hidden>
+    <h3>Evaluaciones guardadas en este dispositivo</h3>
+    <div id="history-list"></div>
+  </div>
+</section>
+
+<!-- ===================== DATOS ===================== -->
+<section id="scr-datos" class="stack-lg" hidden>
+  <div class="stack">
+    <p class="eyebrow">Paso 1 de 3</p>
+    <h2>Antecedentes</h2>
+    <p class="muted small">Se usan para ajustar la interpretación (la audición cambia con la edad) y para orientar la recomendación. Nada sale de este dispositivo.</p>
+  </div>
+  <form id="form-datos" class="sheet stack" novalidate>
+    <div class="grid2">
+      <label class="f">Nombre <span class="hint">Opcional, aparece en el informe</span><input type="text" id="p-name" autocomplete="name"></label>
+      <label class="f">Edad <span class="hint">Años cumplidos</span><input type="number" id="p-age" min="5" max="100" inputmode="numeric" required></label>
+      <label class="f">Sexo <span class="hint">Para la referencia por edad de ISO 7029</span>
+        <select id="p-sex"><option value="">Prefiero no decir</option><option value="F">Mujer</option><option value="M">Hombre</option></select></label>
+      <label class="f">Ocupación <span class="hint">Opcional</span><input type="text" id="p-job" placeholder="Ej.: operador de extrusora"></label>
+    </div>
+
+    <fieldset>
+      <legend>¿Trabaja expuesto a ruido?</legend>
+      <div class="radios">
+        <label><input type="radio" name="p-noise" value="no" checked> No</label>
+        <label><input type="radio" name="p-noise" value="si"> Sí, en mi trabajo hay ruido (planta, taller, construcción, minería…)</label>
+      </div>
+      <div id="noise-extra" class="grid2" style="margin-top:12px" hidden>
+        <label class="f">Años de exposición<input type="number" id="p-years" min="0" max="60" inputmode="numeric"></label>
+        <label class="f">Horas al día en ambiente ruidoso<input type="number" id="p-hours" min="0" max="16" step="0.5" inputmode="decimal"></label>
+        <label class="f">¿Usa protección auditiva?
+          <select id="p-prot"><option value="siempre">Siempre, toda la jornada</option><option value="aveces">A veces</option><option value="nunca">Nunca</option></select></label>
+        <label class="f">¿Está en un programa de vigilancia (PREXOR)?
+          <select id="p-prexor"><option value="nosabe">No sé</option><option value="si">Sí, me hacen audiometrías</option><option value="no">No</option></select></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Exposición fuera del trabajo</legend>
+      <div class="checks">
+        <label><input type="checkbox" id="x-phones"> Uso audífonos más de 1 hora al día a volumen alto</label>
+        <label><input type="checkbox" id="x-events"> Voy seguido a conciertos, discotecas o eventos fuertes</label>
+        <label><input type="checkbox" id="x-guns"> Disparo armas, uso motosierra o moto sin protección</label>
+        <label><input type="checkbox" id="x-recent"> Estuve expuesto a ruido intenso en las últimas 14 horas</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Síntomas y antecedentes</legend>
+      <div class="checks">
+        <label><input type="checkbox" id="s-sudden"> Perdí audición de forma repentina (en horas o pocos días) durante el último mes</label>
+        <label><input type="checkbox" id="s-tinnitus"> Zumbido o pitido en los oídos (tinnitus)</label>
+        <label><input type="checkbox" id="s-tinn-uni"> El zumbido es solo en un oído</label>
+        <label><input type="checkbox" id="s-vertigo"> Mareos o vértigo (sensación de giro)</label>
+        <label><input type="checkbox" id="s-full"> Sensación de oído tapado</label>
+        <label><input type="checkbox" id="s-pain"> Dolor de oído</label>
+        <label><input type="checkbox" id="s-disch"> Secreción o líquido por el oído</label>
+        <label><input type="checkbox" id="s-noise"> Me cuesta entender conversaciones con ruido de fondo</label>
+        <label><input type="checkbox" id="s-oto"> Otitis frecuentes o cirugía de oído</label>
+        <label><input type="checkbox" id="s-drugs"> Tratamiento con quimioterapia, aminoglucósidos u otros fármacos ototóxicos</label>
+        <label><input type="checkbox" id="s-family"> Familiares directos con sordera antes de los 50 años</label>
+      </div>
+    </fieldset>
+
+    <div class="grid2">
+      <label class="f">Equipo de audio
+        <select id="p-device">
+          <option value="supra">Fonos sobre la oreja, con cable</option>
+          <option value="insert">Audífonos intraurales (in‑ear), con cable</option>
+          <option value="bt">Audífonos Bluetooth</option>
+          <option value="spk">Parlantes del equipo</option>
+        </select></label>
+      <label class="f">Tipo de prueba
+        <select id="p-mode">
+          <option value="quick" selected>Rápida: 500, 1k, 2k, 4k y 8k Hz (≈ 5 min)</option>
+          <option value="full">Completa: 250 a 8000 Hz, 8 frecuencias (≈ 9 min)</option>
+        </select></label>
+      <label class="f">Oído para comenzar <span class="hint">Se recomienda empezar por el que oye mejor</span>
+        <select id="p-first"><option value="R">Derecho</option><option value="L">Izquierdo</option></select></label>
+    </div>
+    <div id="spk-warn" class="note bad" hidden>Con parlantes el sonido llega a ambos oídos y no se puede evaluar cada lado. Use audífonos para continuar.</div>
+    <p id="form-err" class="note bad" hidden></p>
+    <div class="row">
+      <button type="submit" class="btn" id="btn-datos-next">Continuar a la calibración</button>
+      <button type="button" class="btn quiet" data-go="intro">Volver</button>
+    </div>
+  </form>
+</section>
+
+<!-- ===================== AJUSTE DE SONIDO ===================== -->
+<section id="scr-cal" class="stack-lg" hidden>
+  <div class="stack">
+    <p class="eyebrow">Paso 2 de 3 · 30 segundos</p>
+    <h2>Ajuste el volumen</h2>
+  </div>
+  <div class="sheet stack">
+    <ol class="tips">
+      <li>Póngase los audífonos y siéntese en un lugar silencioso.</li>
+      <li>Toque <b>Probar sonido</b>: oirá un tono en el oído <span class="ear-l">izquierdo</span>, luego en el <span class="ear-r">derecho</span> y al final en ambos.</li>
+      <li>Ajuste el volumen del equipo para que el último tono se oiga claro y cómodo, como una conversación normal. Después no lo cambie.</li>
+    </ol>
+    <div class="row">
+      <button class="btn ghost" id="t-ref">Probar sonido</button>
+      <span class="small muted" id="t-ref-status" aria-live="polite"></span>
+    </div>
+    <p class="small muted">Si oye el primer tono en ambos oídos, desactive "Audio mono" en la accesibilidad del teléfono.</p>
+    <details>
+      <summary>Ajuste avanzado (opcional)</summary>
+      <div class="stack">
+        <p class="small">Corrección de nivel para equipos conocidos, o calibración biológica: una persona joven con audición normal hace una búsqueda de umbral a 1000 Hz y el sistema ajusta el nivel para que quede en 0 dB HL (ISO 8253‑1).</p>
+        <label class="f">Corrección de nivel: <span class="mono" id="cal-val">0 dB</span><input type="range" id="cal-range" min="-25" max="25" step="1" value="0"></label>
+        <div class="row"><button class="btn quiet" id="btn-bio">Calibración biológica (1 min)</button></div>
+      </div>
+    </details>
+  </div>
+  <div class="row">
+    <button class="btn" id="btn-cal-next">Comenzar la prueba</button>
+    <button class="btn quiet" data-go="datos">Volver</button>
+  </div>
+</section>
+
+<!-- ===================== PRÁCTICA / PRUEBA ===================== -->
+<section id="scr-test" class="stack-lg" hidden>
+  <div class="stack" id="test-intro">
+    <p class="eyebrow" id="test-eyebrow">Paso 3 de 3</p>
+    <h2 id="test-title">Audiometría</h2>
+    <p class="small" id="test-instr">Escuchará pitidos cortos, a veces muy débiles. Presione el botón (o la barra espaciadora) <b>cada vez</b> que crea oír un tono, aunque sea apenas. Si no oye nada, no presione. Los tonos llegan en momentos al azar.</p>
+  </div>
+  <div class="sheet stack">
+    <div class="test-head">
+      <div><div class="earbadge" id="ear-badge">—</div><div class="freqread" id="freq-read">Preparando</div></div>
+      <div class="row no-print">
+        <button class="btn quiet" id="btn-pause">Pausar</button>
+        <button class="btn quiet" id="btn-abort">Cancelar</button>
+      </div>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="prog"></i></div>
+    <div class="respond-zone">
+      <button class="respond" id="btn-respond" aria-label="Lo escuché">Lo escuché<small>o barra espaciadora</small></button>
+    </div>
+    <p class="status-line" id="status-line" aria-live="polite"></p>
+    <div id="abort-confirm" class="note warn row" hidden style="justify-content:space-between">
+      <span>¿Cancelar la prueba? Se perderán los resultados de esta sesión.</span>
+      <span class="row"><button class="btn" id="abort-yes">Sí, cancelar</button><button class="btn quiet" id="abort-no">Seguir</button></span>
+    </div>
+  </div>
+  <div class="sheet stack" id="live-box" hidden>
+    <h3>Audiograma en curso</h3>
+    <div class="figure"><svg class="audiogram" id="ag-live" role="img" aria-label="Audiograma en curso"></svg></div>
+  </div>
+</section>
+
+<!-- ===================== INFORME ===================== -->
+<section id="scr-report" class="stack-lg" hidden>
+  <div id="report"></div>
+  <div class="row no-print">
+    <button class="btn" id="btn-share" hidden>Compartir informe</button>
+    <button class="btn" id="btn-copy">Copiar informe</button>
+    <button class="btn ghost" id="btn-print" hidden>Imprimir o guardar PDF</button>
+    <button class="btn quiet" id="btn-new">Nueva evaluación</button>
+  </div>
+  <textarea id="copy-fallback" class="no-print" hidden readonly style="width:100%;min-height:200px;font-family:var(--font-mono);font-size:12px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px"></textarea>
+</section>
+
+</div>
+
+<script>
+'use strict';
+/* =========================================================================
+   Fundamentos
+   - Frecuencias y orden: ASHA (2005) Guidelines for Manual Pure-Tone Threshold
+     Audiometry; ISO 8253-1:2010. Se empieza en 1 kHz, se sube hasta 8 kHz,
+     se repite 1 kHz (confiabilidad test-retest) y luego 500 y 250 Hz.
+   - Búsqueda de umbral: Hughson-Westlake modificado (Carhart y Jerger, 1959):
+     baja 10 dB tras una respuesta, sube 5 dB tras no responder; umbral = nivel
+     más bajo con 2 respuestas en tramos ascendentes.
+   - Tonos pulsados (3 pulsos de 220 ms) con rampas de 25 ms, que facilitan la
+     detección en personas con tinnitus (Burk y Wiley, 2004).
+   - Conversión dB HL -> nivel digital: referencia en 1 kHz (60 dB HL = -24 dBFS
+     con el volumen fijado por el usuario) y forma espectral del umbral normal
+     de ISO 389-7:2005 relativa a 1 kHz.
+   ========================================================================= */
+const FREQ_SEQ = { full: [1000, 2000, 3000, 4000, 6000, 8000, 1000, 500, 250], quick: [1000, 2000, 4000, 8000, 500] };
+const ALL_FREQS = [250, 500, 1000, 2000, 3000, 4000, 6000, 8000];
+// ISO 389-7 (umbral normal en campo libre) relativo a 1 kHz, dB
+const REL = { 250: 9.0, 500: 2.0, 1000: 0, 2000: -3.7, 3000: -8.2, 4000: -7.8, 6000: 1.9, 8000: 10.2 };
+const REF_DBFS = -24, REF_HL = 60, MIN_HL = -10, ABS_MAX = 90;
+// ISO 7029:2000, mediana del desplazamiento por edad: a * (edad - 18)^2
+const ISO7029 = {
+  M: { 250: .0030, 500: .0035, 1000: .0040, 2000: .0070, 3000: .0115, 4000: .0160, 6000: .0180, 8000: .0220 },
+  F: { 250: .0030, 500: .0035, 1000: .0040, 2000: .0060, 3000: .0075, 4000: .0090, 6000: .0120, 8000: .0150 }
+};
+const WHO = [
+  { max: 20, name: 'Audición normal', short: 'Normal', life: 'No tiene problemas para oír los sonidos.' },
+  { max: 35, name: 'Pérdida auditiva leve', short: 'Leve', life: 'En ambientes tranquilos oye bien, pero puede costarle seguir una conversación en lugares ruidosos.' },
+  { max: 50, name: 'Pérdida auditiva moderada', short: 'Moderada', life: 'Puede tener dificultad para oír la voz normal y para conversar en ambientes ruidosos.' },
+  { max: 65, name: 'Pérdida auditiva moderadamente severa', short: 'Moderadamente severa', life: 'Le cuesta seguir la mayoría de las conversaciones; oye la voz elevada sin dificultad.' },
+  { max: 80, name: 'Pérdida auditiva severa', short: 'Severa', life: 'No oye la mayor parte de una conversación; incluso la voz elevada le cuesta.' },
+  { max: 95, name: 'Pérdida auditiva profunda', short: 'Profunda', life: 'Tiene dificultad extrema para oír la voz elevada.' },
+  { max: Infinity, name: 'Pérdida auditiva completa', short: 'Completa', life: 'No oye la voz ni la mayoría de los sonidos del ambiente.' }
+];
+const EAR_NAME = { R: 'Oído derecho', L: 'Oído izquierdo' };
+
+const S = {
+  profile: null, cal: 0, results: null, sample: false,
+  running: false, paused: false, aborted: false, phase: null, runId: 0
+};
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const rand = (a, b) => a + Math.random() * (b - a);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtF = (f) => f >= 1000 ? (f / 1000) + ' kHz' : f + ' Hz';
+
+/* ----------------------------- Audio ------------------------------------ */
+let ctx = null;
+function audio() {
+  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+function maxHL(f, cal = S.cal) {
+  const m = REF_HL - REF_DBFS - REL[f] - cal;
+  return Math.min(ABS_MAX, Math.floor(m / 5) * 5);
+}
+function hlToAmp(f, hl) {
+  const dbfs = REF_DBFS + (hl - REF_HL) + REL[f] + S.cal;
+  return Math.min(1, Math.pow(10, dbfs / 20));
+}
+// ear: 'L' | 'R' | 'B'. Devuelve la duración en segundos.
+function playTone(f, hl, ear, { pulses = 3, on = 0.2, off = 0.15, silent = false } = {}) {
+  const c = audio();
+  const t0 = c.currentTime + 0.06, ramp = 0.025;
+  const osc = c.createOscillator(); osc.type = 'sine'; osc.frequency.value = f;
+  const g = c.createGain(); g.gain.value = 0;
+  const merger = c.createChannelMerger(2);
+  osc.connect(g);
+  if (ear !== 'R') g.connect(merger, 0, 0);
+  if (ear !== 'L') g.connect(merger, 0, 1);
+  merger.connect(c.destination);
+  const amp = silent ? 0 : hlToAmp(f, hl);
+  let t = t0;
+  for (let i = 0; i < pulses; i++) {
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(amp, t + ramp);
+    g.gain.setValueAtTime(amp, t + on - ramp);
+    g.gain.linearRampToValueAtTime(0, t + on);
+    t += on + (i < pulses - 1 ? off : 0);
+  }
+  osc.start(t0); osc.stop(t + 0.05);
+  osc.onended = () => { try { osc.disconnect(); g.disconnect(); merger.disconnect(); } catch (e) {} };
+  return t - c.currentTime;
+}
+
+/* ------------------------ Presentación y respuesta ----------------------- */
+let windowOpen = false, heardFlag = false;
+const stats = { catchTrials: 0, falsePos: 0, spontaneous: 0, presentations: 0 };
+function respond() {
+  const b = $('btn-respond');
+  b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 160);
+  if (!S.running || S.paused) return;
+  if (windowOpen) heardFlag = true; else stats.spontaneous++;
+}
+// Cada ejecución (práctica, calibración, prueba) tiene su propio id; al cancelar
+// o iniciar otra, la anterior se detiene en su siguiente presentación.
+async function gate(run) {
+  while (S.paused && !S.aborted && run === S.runId) await sleep(150);
+  if (S.aborted || run !== S.runId) throw new Error('abort');
+}
+async function present(ear, f, hl, silent = false, run = S.runId) {
+  await gate(run);
+  heardFlag = false; windowOpen = true;
+  const dur = playTone(f, hl, ear, { silent });
+  await sleep((dur + 1.0) * 1000);
+  windowOpen = false;
+  const r = heardFlag; heardFlag = false;
+  if (!silent) stats.presentations++;
+  return r;
+}
+const iti = () => sleep(rand(700, 1800));
+
+/* Hughson-Westlake modificado. presentFn(level) -> Promise<bool>.
+   Devuelve { hl, nr, trials, log }. */
+async function hughsonWestlake(presentFn, start, max, opts = {}) {
+  const pause = opts.pause || iti;
+  const catchFn = opts.catchFn || null;
+  let level = Math.max(MIN_HL, Math.min(start, max));
+  let gotFirst = false, prevNo = false, noAtMax = 0, yesAtMin = 0, trials = 0;
+  const asc = {}, log = [];
+  while (true) {
+    if (catchFn && trials > 1 && Math.random() < 0.09) { await catchFn(); await pause(); }
+    const r = await presentFn(level);
+    trials++; log.push([level, r]);
+    if (opts.onTrial) opts.onTrial(level, r);
+    if (!gotFirst) {
+      // Familiarización: sube de 10 en 10 hasta la primera respuesta.
+      if (r) { gotFirst = true; prevNo = false; if (level === MIN_HL) yesAtMin++; level = Math.max(MIN_HL, level - 10); }
+      else {
+        if (level >= max) { noAtMax++; if (noAtMax >= 2) return { hl: max, nr: true, trials, log }; }
+        level = Math.min(max, level + 10);
+      }
+    } else {
+      if (prevNo) {
+        const a = asc[level] || (asc[level] = { n: 0, y: 0 });
+        a.n++; if (r) a.y++;
+        if (a.y >= 2) return { hl: level, nr: false, trials, log };
+      }
+      if (r) {
+        if (level === MIN_HL) { yesAtMin++; if (yesAtMin >= 2) return { hl: MIN_HL, nr: false, trials, log }; }
+        level = Math.max(MIN_HL, level - 10); prevNo = false;
+      } else {
+        if (level >= max) { noAtMax++; if (noAtMax >= 2) return { hl: max, nr: true, trials, log }; }
+        level = Math.min(max, level + 5); prevNo = true;
+      }
+    }
+    if (trials >= 26) {
+      // Respaldo: nivel más bajo con al menos la mitad de respuestas en ascenso.
+      const cand = Object.entries(asc).filter(([, a]) => a.n >= 2 && a.y / a.n >= 0.5).map(([l]) => +l);
+      if (cand.length) return { hl: Math.min(...cand), nr: false, trials, log, unstable: true };
+      const heard = log.filter(([, x]) => x).map(([l]) => l);
+      if (heard.length) return { hl: Math.min(...heard) + 5, nr: false, trials, log, unstable: true };
+      return { hl: max, nr: true, trials, log };
+    }
+    await pause();
+  }
+}
+
+/* ----------------------------- Navegación -------------------------------- */
+const SCREENS = ['intro', 'datos', 'cal', 'test', 'report'];
+function go(name) {
+  SCREENS.forEach((s) => { $('scr-' + s).hidden = s !== name; });
+  document.querySelectorAll('.steps span').forEach((sp) => sp.classList.toggle('on', sp.dataset.step === name));
+  window.scrollTo({ top: 0 });
+  if (name === 'intro') renderHistory();
+}
+document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); go(b.dataset.go); }));
+
+/* -------------------------------- Datos ---------------------------------- */
+const noiseRadios = document.querySelectorAll('input[name="p-noise"]');
+noiseRadios.forEach((r) => r.addEventListener('change', () => { $('noise-extra').hidden = document.querySelector('input[name="p-noise"]:checked').value !== 'si'; }));
+$('p-device').addEventListener('change', () => { $('spk-warn').hidden = $('p-device').value !== 'spk'; });
+$('btn-start').addEventListener('click', () => { audio(); go('datos'); });
+$('form-datos').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const age = parseInt($('p-age').value, 10);
+  const err = $('form-err');
+  if (!(age >= 5 && age <= 100)) { err.textContent = 'Ingrese su edad (entre 5 y 100 años) para poder comparar con la referencia por edad.'; err.hidden = false; $('p-age').focus(); return; }
+  if ($('p-device').value === 'spk') { err.textContent = 'La prueba necesita audífonos para evaluar cada oído por separado.'; err.hidden = false; return; }
+  err.hidden = true;
+  const ck = (id) => $(id).checked;
+  const occ = document.querySelector('input[name="p-noise"]:checked').value === 'si';
+  S.profile = {
+    name: $('p-name').value.trim(), age, sex: $('p-sex').value, job: $('p-job').value.trim(),
+    occ, years: occ ? +$('p-years').value || null : null, hours: occ ? +$('p-hours').value || null : null,
+    prot: occ ? $('p-prot').value : null, prexor: occ ? $('p-prexor').value : null,
+    phones: ck('x-phones'), events: ck('x-events'), guns: ck('x-guns'), recent: ck('x-recent'),
+    sudden: ck('s-sudden'), tinnitus: ck('s-tinnitus'), tinnUni: ck('s-tinn-uni'), vertigo: ck('s-vertigo'), full: ck('s-full'),
+    pain: ck('s-pain'), disch: ck('s-disch'), noiseDiff: ck('s-noise'), oto: ck('s-oto'), drugs: ck('s-drugs'), family: ck('s-family'),
+    device: $('p-device').value, mode: $('p-mode').value, first: $('p-first').value
+  };
+  go('cal');
+});
+
+/* ----------------------------- Calibración ------------------------------- */
+let refBusy = false;
+$('t-ref').addEventListener('click', async () => {
+  if (refBusy) return; refBusy = true;
+  const st = $('t-ref-status');
+  st.textContent = 'Izquierdo…'; playTone(1000, 50, 'L', { pulses: 2, on: 0.35, off: 0.15 }); await sleep(1100);
+  st.textContent = 'Derecho…'; playTone(1000, 50, 'R', { pulses: 2, on: 0.35, off: 0.15 }); await sleep(1100);
+  st.textContent = 'Ambos: ajuste el volumen ahora'; playTone(1000, 60, 'B', { pulses: 1, on: 2.5 }); await sleep(2700);
+  st.textContent = 'Listo. Puede repetirlo o comenzar.'; refBusy = false;
+});
+function setCal(v) {
+  S.cal = Math.max(-25, Math.min(25, Math.round(v)));
+  $('cal-range').value = S.cal;
+  $('cal-val').textContent = (S.cal > 0 ? '+' : '') + S.cal + ' dB';
+}
+$('cal-range').addEventListener('input', (e) => setCal(+e.target.value));
+$('btn-cal-next').addEventListener('click', () => runAudiometry());
+$('btn-bio').addEventListener('click', () => startBio());
+
+/* ------------------------------- Prueba ---------------------------------- */
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) { wakeLock = null; }
+}
+function setTestUI({ title, eyebrow, instr }) {
+  if (title) $('test-title').textContent = title;
+  if (eyebrow) $('test-eyebrow').textContent = eyebrow;
+  if (instr) $('test-instr').innerHTML = instr;
+}
+function setEar(ear, text) {
+  const b = $('ear-badge');
+  b.textContent = text || EAR_NAME[ear];
+  b.className = 'earbadge ' + (ear === 'R' ? 'ear-r' : ear === 'L' ? 'ear-l' : '');
+}
+function resetRunState() {
+  S.runId++;
+  S.running = true; S.paused = false; S.aborted = false;
+  $('btn-pause').textContent = 'Pausar';
+  $('abort-confirm').hidden = true;
+  $('status-line').textContent = '';
+}
+
+async function startBio() {
+  audio();
+  S.phase = 'bio';
+  go('test'); resetRunState();
+  $('live-box').hidden = true; $('prog').style.width = '0%';
+  setTestUI({ title: 'Calibración biológica', eyebrow: 'Persona con audición normal', instr: 'La persona de referencia, con los audífonos puestos y el volumen ya fijado, presiona el botón cada vez que oiga un tono en el oído derecho.' });
+  setEar('R'); $('freq-read').textContent = '1 kHz';
+  const run = S.runId;
+  try {
+    await sleep(1200);
+    const res = await hughsonWestlake((l) => present('R', 1000, l, false, run), 30, maxHL(1000));
+    S.running = false;
+    if (!res.nr) setCal(S.cal + res.hl);
+    go('cal');
+    toast(res.nr ? 'La persona de referencia no respondió. Revise el volumen.' : `Umbral de referencia ${res.hl} dB HL. Corrección aplicada: ${S.cal > 0 ? '+' : ''}${S.cal} dB.`);
+  } catch (e) { /* cancelado */ }
+}
+
+async function runAudiometry() {
+  audio();
+  S.phase = 'test';
+  go('test'); resetRunState(); keepAwake(true);
+  $('prog').style.width = '0%';
+  const run = S.runId;
+  Object.assign(stats, { catchTrials: 0, falsePos: 0, spontaneous: 0, presentations: 0 });
+  const p = S.profile;
+  const seq = FREQ_SEQ[p.mode];
+  const ears = p.first === 'R' ? ['R', 'L'] : ['L', 'R'];
+  const res = { R: {}, L: {}, retest: { R: null, L: null }, unstable: [] };
+  const total = seq.length * 2; let done = 0;
+  $('live-box').hidden = false;
+  setTestUI({ title: 'Audiometría en curso', eyebrow: 'Paso 3 de 3', instr: 'Presione <b>cada vez</b> que oiga un tono, por débil que sea. Si no oye nada, no presione. Puede pausar cuando quiera.' });
+  const live = () => drawAudiogram($('ag-live'), res, { compact: true });
+  live();
+  try {
+    for (const n of [3, 2, 1]) { $('status-line').textContent = `Comienza en ${n}…`; await sleep(800); await gate(run); }
+    for (const ear of ears) {
+      setEar(ear);
+      let prev = null; let seen1k = false;
+      for (const f of seq) {
+        const isRetest = f === 1000 && seen1k;
+        $('freq-read').textContent = fmtF(f) + (isRetest ? ' · repetición' : '');
+        $('status-line').textContent = '';
+        const max = maxHL(f);
+        let start = prev == null ? 30 : (prev.nr ? max - 10 : prev.hl + 10);
+        if (isRetest) start = Math.max(0, res[ear][1000].hl + 10);
+        start = Math.max(10, Math.min(start, max));
+        await sleep(400); await gate(run);
+        const r = await hughsonWestlake((l) => present(ear, f, l, false, run), start, max, {
+          catchFn: async () => { stats.catchTrials++; if (await present(ear, f, 0, true, run)) stats.falsePos++; }
+        });
+        if (r.unstable) res.unstable.push(ear + f);
+        if (isRetest) res.retest[ear] = { hl: r.hl, nr: r.nr };
+        else { res[ear][f] = { hl: r.hl, nr: r.nr }; prev = r; }
+        if (f === 1000) seen1k = true;
+        done++; $('prog').style.width = (done / total * 100) + '%';
+        live();
+      }
+    }
+  } catch (e) { keepAwake(false); return; }
+  S.running = false; keepAwake(false);
+  const result = {
+    id: Date.now(), date: new Date().toISOString(), profile: p, cal: S.cal,
+    thr: { R: res.R, L: res.L }, retest: res.retest, unstable: res.unstable, stats: { ...stats }
+  };
+  saveHistory(result);
+  showReport(result, false);
+}
+
+$('btn-respond').addEventListener('pointerdown', (e) => { e.preventDefault(); respond(); });
+$('btn-respond').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); respond(); } });
+document.addEventListener('keydown', (e) => {
+  if ($('scr-test').hidden) return;
+  if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); if (!e.repeat) respond(); }
+});
+$('btn-pause').addEventListener('click', () => {
+  if (!S.running) return;
+  S.paused = !S.paused;
+  $('btn-pause').textContent = S.paused ? 'Reanudar' : 'Pausar';
+  $('status-line').textContent = S.paused ? 'En pausa. Los tonos se detienen hasta que reanude.' : '';
+});
+$('btn-abort').addEventListener('click', () => { if (S.running) $('abort-confirm').hidden = false; else go('cal'); });
+$('abort-no').addEventListener('click', () => { $('abort-confirm').hidden = true; });
+$('abort-yes').addEventListener('click', () => { S.aborted = true; S.running = false; S.runId++; keepAwake(false); go(S.phase === 'test' ? 'intro' : 'cal'); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S.running && !S.paused) {
+    S.paused = true; $('btn-pause').textContent = 'Reanudar';
+    $('status-line').textContent = 'Pausado porque la ventana quedó en segundo plano.';
+  }
+});
+
+/* ----------------------------- Audiograma -------------------------------- */
+function expectedShift(age, sex, f) {
+  if (!age || age <= 18) return 0;
+  const a = sex === 'M' || sex === 'F' ? ISO7029[sex][f] : (ISO7029.M[f] + ISO7029.F[f]) / 2;
+  return a * Math.pow(Math.min(age, 80) - 18, 2);
+}
+function drawAudiogram(svg, data, opts = {}) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 640, H = opts.compact ? 330 : 400;
+  const m = { l: 46, r: opts.compact ? 16 : 132, t: 30, b: 16 };
+  const yMin = -10, yMax = opts.compact ? 100 : 110;
+  const pw = W - m.l - m.r, ph = H - m.t - m.b;
+  const x = (f) => m.l + 14 + (Math.log2(f / 250) / 5) * (pw - 28);
+  const y = (db) => m.t + ((db - yMin) / (yMax - yMin)) * ph;
+  let s = '';
+  // Bandas OMS
+  const bands = [[20, 35, 'Leve'], [35, 50, 'Moderada'], [50, 65, 'Mod. severa'], [65, 80, 'Severa'], [80, 95, 'Profunda'], [95, yMax, 'Completa']];
+  s += `<rect class="band-rect" x="${m.l}" y="${y(yMin)}" width="${pw}" height="${y(20) - y(yMin)}" fill-opacity="0.07"/>`;
+  bands.forEach(([a, b, name], i) => {
+    s += `<rect class="band-rect" x="${m.l}" y="${y(a)}" width="${pw}" height="${y(Math.min(b, yMax)) - y(a)}" fill-opacity="${0.0 + i * 0.035}"/>`;
+    if (!opts.compact) s += `<text class="band" x="${m.l + pw + 8}" y="${(y(a) + y(Math.min(b, yMax))) / 2 + 4}">${name}</text>`;
+  });
+  if (!opts.compact) s += `<text class="band" x="${m.l + pw + 8}" y="${(y(yMin) + y(20)) / 2 + 4}">Normal</text>`;
+  // Grilla
+  s += '<g class="grid">';
+  for (let d = yMin; d <= yMax; d += 10) s += `<line x1="${m.l}" x2="${m.l + pw}" y1="${y(d)}" y2="${y(d)}" class="${d === 0 ? 'major' : ''}"/><text x="${m.l - 8}" y="${y(d) + 4}" text-anchor="end">${d}</text>`;
+  ALL_FREQS.forEach((f) => {
+    const minor = f === 3000 || f === 6000;
+    s += `<line x1="${x(f)}" x2="${x(f)}" y1="${m.t}" y2="${m.t + ph}" ${minor ? 'stroke-dasharray="3 4"' : ''}/>`;
+    s += `<text x="${x(f)}" y="${m.t - 10}" text-anchor="middle">${f >= 1000 ? f / 1000 + 'k' : f}</text>`;
+  });
+  s += `<line x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${m.t + ph}" class="major"/><line x1="${m.l + pw}" x2="${m.l + pw}" y1="${m.t}" y2="${m.t + ph}" class="major"/>`;
+  s += '</g>';
+  s += `<text x="${m.l - 8}" y="${m.t - 10}" text-anchor="end">dB HL</text>`;
+  // Curva esperada por edad
+  if (opts.age) {
+    const pts = ALL_FREQS.map((f) => `${x(f)},${y(expectedShift(opts.age, opts.sex, f))}`).join(' ');
+    s += `<polyline class="exp" points="${pts}"/>`;
+  }
+  // Oídos
+  for (const ear of ['R', 'L']) {
+    const t = data[ear] || {};
+    const cls = ear === 'R' ? 'r' : 'l';
+    const pts = ALL_FREQS.filter((f) => t[f] && !t[f].nr).map((f) => `${x(f)},${y(t[f].hl)}`);
+    if (pts.length > 1) s += `<polyline class="${cls}" stroke-width="2" points="${pts.join(' ')}"/>`;
+    ALL_FREQS.forEach((f) => {
+      if (!t[f]) return;
+      const cx = x(f) + (ear === 'R' ? -3 : 3), cy = y(t[f].hl);
+      if (ear === 'R') s += `<circle class="mk-bg" cx="${cx}" cy="${cy}" r="7"/><circle class="r" stroke-width="2.2" cx="${cx}" cy="${cy}" r="7"/>`;
+      else s += `<path class="l" stroke-width="2.4" d="M${cx - 6} ${cy - 6}L${cx + 6} ${cy + 6}M${cx + 6} ${cy - 6}L${cx - 6} ${cy + 6}"/>`;
+      if (t[f].nr) {
+        const dx = ear === 'R' ? -1 : 1;
+        s += `<path class="${cls}" stroke-width="2" d="M${cx + dx * 5} ${cy + 7}L${cx + dx * 13} ${cy + 19}M${cx + dx * 13} ${cy + 19}L${cx + dx * 13} ${cy + 12}M${cx + dx * 13} ${cy + 19}L${cx + dx * 6} ${cy + 18}"/>`;
+      }
+    });
+  }
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = s;
+}
+
+/* ------------------------------- Análisis -------------------------------- */
+const tv = (t) => t ? (t.nr ? t.hl + 5 : t.hl) : null; // sin respuesta: se computa como máx + 5
+function avgOf(thr, fs) {
+  const vals = fs.map((f) => thr[f]);
+  if (vals.some((v) => !v)) return null;
+  return { v: vals.reduce((a, t) => a + tv(t), 0) / vals.length, ge: vals.some((t) => t.nr) };
+}
+function whoGrade(v) { return WHO.find((g) => v < g.max); }
+function finalThr(r, ear) {
+  const t = { ...r.thr[ear] };
+  const rt = r.retest && r.retest[ear];
+  if (rt && t[1000] && !rt.nr && !t[1000].nr) t[1000] = { hl: Math.min(rt.hl, t[1000].hl), nr: false };
+  return t;
+}
+function analyze(r) {
+  const p = r.profile;
+  const T = { R: finalThr(r, 'R'), L: finalThr(r, 'L') };
+  const A = { T, ears: {} };
+  for (const ear of ['R', 'L']) {
+    const t = T[ear];
+    const pta = avgOf(t, [500, 1000, 2000, 4000]);
+    const hf = avgOf(t, [3000, 4000, 6000]) || avgOf(t, [4000]);
+    const low = avgOf(t, [250, 500]) || avgOf(t, [500]);
+    const high = avgOf(t, [4000, 8000]) || avgOf(t, [4000]);
+    let notch = null;
+    if (t[1000] && t[2000] && t[8000]) {
+      const base = Math.min(tv(t[1000]), tv(t[2000]));
+      const cands = [3000, 4000, 6000].filter((f) => t[f]).map((f) => ({ f, v: tv(t[f]) })).sort((a, b) => b.v - a.v);
+      if (cands.length) {
+        const c = cands[0];
+        if (c.v - base >= 10 && c.v - tv(t[8000]) >= 10) notch = { f: c.f, depth: Math.round(c.v - Math.max(base, tv(t[8000]))), v: c.v };
+      }
+    }
+    let shape = 'plana';
+    if (low && high) {
+      if (high.v - low.v >= 20) shape = 'descendente';
+      else if (low.v - high.v >= 15) shape = 'ascendente';
+    }
+    if (notch) shape = 'muesca';
+    const overAge = ALL_FREQS.filter((f) => t[f] && tv(t[f]) - expectedShift(p.age, p.sex, f) > 15 && tv(t[f]) > 25);
+    const anyAbn = ALL_FREQS.filter((f) => t[f] && tv(t[f]) > 25);
+    A.ears[ear] = { pta, hf, notch, shape, overAge, anyAbn, grade: pta ? whoGrade(pta.v) : null };
+  }
+  // Asimetría
+  const diffs = ALL_FREQS.filter((f) => T.R[f] && T.L[f]).map((f) => ({ f, d: tv(T.R[f]) - tv(T.L[f]) }));
+  let adj = false;
+  for (let i = 1; i < diffs.length; i++) {
+    const a = diffs[i - 1].d, b = diffs[i].d;
+    if (Math.abs(a) >= 15 && Math.abs(b) >= 15 && Math.sign(a) === Math.sign(b)) adj = true;
+  }
+  const ptaDiff = A.ears.R.pta && A.ears.L.pta ? A.ears.R.pta.v - A.ears.L.pta.v : 0;
+  const maxD = diffs.reduce((m, x) => Math.abs(x.d) > Math.abs(m.d) ? x : m, { f: null, d: 0 });
+  A.asym = { yes: Math.abs(ptaDiff) >= 15 || adj, ptaDiff, worse: (ptaDiff || maxD.d) > 0 ? 'R' : 'L', maxD, masking: Math.abs(maxD.d) >= 40 };
+  // Oído mejor (OMS clasifica por el mejor oído)
+  const better = (A.ears.R.pta?.v ?? 999) <= (A.ears.L.pta?.v ?? 999) ? 'R' : 'L';
+  const worse = better === 'R' ? 'L' : 'R';
+  A.better = better;
+  A.overall = A.ears[better].grade;
+  A.unilateral = A.ears[better].pta && A.ears[better].pta.v < 20 && A.ears[worse].pta && A.ears[worse].pta.v >= 35;
+  // Confiabilidad
+  const st = r.stats || {};
+  const rtd = ['R', 'L'].map((e) => r.retest && r.retest[e] && r.thr[e][1000] ? Math.abs(tv(r.retest[e]) - tv(r.thr[e][1000])) : null).filter((v) => v != null);
+  const fpRate = st.catchTrials ? st.falsePos / st.catchTrials : 0;
+  const issues = [];
+  if (rtd.some((d) => d > 10)) issues.push(`La repetición a 1 kHz difirió en ${Math.max(...rtd)} dB (lo esperable es 5 dB o menos).`);
+  if (st.catchTrials >= 2 && fpRate > 0.25) issues.push(`Respondió en ${st.falsePos} de ${st.catchTrials} intervalos sin tono (respuestas falsas).`);
+  if (st.spontaneous > Math.max(6, (st.presentations || 0) * 0.08)) issues.push(`Hubo ${st.spontaneous} pulsaciones fuera de los tonos.`);
+  if (r.unstable && r.unstable.length) issues.push(`En ${r.unstable.length} frecuencia(s) las respuestas fueron inconsistentes.`);
+  A.reliability = { issues, rtd, fpRate, good: issues.length === 0 };
+  return A;
+}
+
+function decide(r, A) {
+  const p = r.profile;
+  const items = []; // {lvl, who, title, body}
+  let lvl = 0;
+  const bump = (n) => { lvl = Math.max(lvl, n); };
+  const ptaMax = Math.max(A.ears.R.pta?.v ?? 0, A.ears.L.pta?.v ?? 0);
+  const anyAbn = A.ears.R.anyAbn.length || A.ears.L.anyAbn.length;
+  const notch = A.ears.R.notch || A.ears.L.notch;
+  const hfMax = Math.max(A.ears.R.hf?.v ?? 0, A.ears.L.hf?.v ?? 0);
+
+  if (p.sudden) {
+    bump(3);
+    items.push({ lvl: 3, who: 'Urgencia u otorrinolaringólogo hoy', title: 'Pérdida auditiva repentina: es una urgencia',
+      body: 'Una baja de audición que aparece en horas o pocos días puede ser una hipoacusia súbita neurosensorial. El tratamiento con corticoides tiene mejor resultado si comienza pronto, idealmente dentro de las primeras 72 horas y antes de 14 días (guía AAO‑HNS, Chandrasekhar et al., 2019). No espere a ver si mejora: acuda hoy a un servicio de urgencia o a un otorrinolaringólogo.' });
+  }
+  if (p.vertigo && (anyAbn || p.tinnUni || p.full)) {
+    bump(p.sudden ? 3 : 2);
+    items.push({ lvl: 2, who: 'Otorrinolaringólogo', title: 'Vértigo junto con síntomas auditivos',
+      body: 'La combinación de vértigo con baja audición, zumbido o sensación de oído tapado puede corresponder a enfermedad de Ménière u otras causas del oído interno que requieren estudio especializado.' });
+  }
+  if (p.pain || p.disch) {
+    bump(2);
+    items.push({ lvl: 2, who: 'Médico general u otorrinolaringólogo', title: 'Dolor o secreción del oído',
+      body: 'Sugieren una infección u otro problema del oído externo o medio. Pueden alterar el resultado de esta prueba y requieren examen con otoscopio. No introduzca objetos ni gotas sin indicación médica.' });
+  }
+  if (A.asym.yes) {
+    bump(2);
+    items.push({ lvl: 2, who: 'Otorrinolaringólogo', title: `Diferencia entre oídos (peor: ${EAR_NAME[A.asym.worse].toLowerCase()})`,
+      body: `Hay una asimetría de ${Math.abs(Math.round(A.asym.ptaDiff))} dB en el promedio tonal${A.asym.maxD.f ? ` y de hasta ${Math.abs(A.asym.maxD.d)} dB a ${fmtF(A.asym.maxD.f)}` : ''}. Una pérdida que afecta más a un oído siempre debe ser evaluada por un otorrinolaringólogo, quien puede pedir una audiometría con vía ósea y enmascaramiento y, si corresponde, una resonancia para descartar causas retrococleares.` });
+  }
+  if (ptaMax >= 20) {
+    bump(2);
+    const g = whoGrade(ptaMax);
+    items.push({ lvl: 2, who: 'Otorrinolaringólogo y audiometría clínica', title: `Promedio tonal en rango de ${g.name.toLowerCase()}`,
+      body: `Conviene confirmar el resultado con una audiometría en cabina (vía aérea y ósea) e impedanciometría, para saber si la pérdida es conductiva (oído externo o medio, a veces tratable) o neurosensorial (oído interno).${ptaMax >= 35 ? ' Con este grado, la OMS recomienda evaluar el uso de audífonos u otras ayudas auditivas: mejoran la comunicación y se asocian a menor riesgo de aislamiento y deterioro cognitivo.' : ''}` });
+  } else if (anyAbn) {
+    bump(2);
+    const fs = [...new Set([...A.ears.R.anyAbn, ...A.ears.L.anyAbn])].sort((a, b) => a - b).map(fmtF).join(', ');
+    items.push({ lvl: 2, who: 'Audiometría clínica', title: 'Promedio normal, pero con frecuencias alteradas',
+      body: `El promedio de las frecuencias del habla es normal, pero hay umbrales sobre 25 dB HL en ${fs}. Las pérdidas en agudos suelen ser las primeras en aparecer por ruido o edad, y se notan sobre todo al conversar con ruido de fondo. Confírmelo con una audiometría clínica.` });
+  }
+  if ((p.tinnitus && p.tinnUni) || (p.tinnitus && anyAbn)) {
+    bump(2);
+    items.push({ lvl: 2, who: 'Otorrinolaringólogo', title: p.tinnUni ? 'Zumbido en un solo oído' : 'Zumbido con pérdida auditiva',
+      body: 'El tinnitus unilateral o acompañado de pérdida auditiva debe ser evaluado. Si dura más de 3 meses, existen terapias (sonoras, cognitivo‑conductual) con buena evidencia para reducir la molestia.' });
+  }
+
+  // Ámbito laboral
+  let mutual = null;
+  if (p.occ) {
+    const noiseSigns = notch || hfMax >= 25 || anyAbn || p.tinnitus || p.noiseDiff;
+    if (noiseSigns) {
+      bump(2);
+      mutual = { lvl: 2, who: 'Mutualidad de su empresa (Ley 16.744)', title: 'Posible daño auditivo de origen laboral',
+        body: `${notch ? `Su audiograma muestra una muesca a ${fmtF(notch.f)} con recuperación a 8 kHz, el patrón característico de la hipoacusia inducida por ruido (criterios de Coles et al., 2000). ` : 'Usted trabaja con ruido y presenta signos auditivos que podrían relacionarse con esa exposición. '}En Chile la hipoacusia por ruido laboral es una enfermedad profesional cubierta por la Ley 16.744: la evaluación, los exámenes y el tratamiento son gratuitos en la mutualidad a la que está adherida su empresa (ACHS, Mutual de Seguridad CChC o IST; si su empleador no está adherido a una mutualidad, en el ISL). Pida a su empresa la Denuncia Individual de Enfermedad Profesional (DIEP); si no la emite, la ley le permite presentarla usted mismo directamente en la mutualidad. Allí le harán una audiometría con reposo auditivo previo y lo incorporarán al programa de vigilancia PREXOR si aún no está en él.` };
+    } else {
+      bump(1);
+      mutual = { lvl: 1, who: 'Programa de vigilancia de su empresa', title: 'Trabajo con ruido: mantenga su control periódico',
+        body: `Hoy no se observan signos de daño por ruido. ${p.prexor === 'si' ? 'Siga asistiendo a sus audiometrías del programa PREXOR.' : 'Si su puesto supera el criterio de acción de 82 dB(A) para 8 horas, su empresa debe incluirlo en un programa de vigilancia auditiva (protocolo PREXOR, MINSAL) con audiometrías periódicas en la mutualidad. Pregunte en su departamento de prevención de riesgos si se han hecho mediciones de ruido de su puesto.'}` };
+    }
+    items.push(mutual);
+  }
+
+  if (!items.length) {
+    items.push({ lvl: 0, who: 'Control preventivo', title: 'No se requiere consulta por ahora',
+      body: `Sus umbrales están dentro de lo normal. Repita un control ${p.age >= 50 ? 'cada 1 a 3 años' : 'cada 3 a 5 años'}, o antes si nota cambios, zumbido persistente o dificultad para entender conversaciones.` });
+  }
+  if (!A.reliability.good) {
+    items.push({ lvl: 1, who: 'Repetir la prueba', title: 'Resultados con baja consistencia',
+      body: 'Algunas respuestas no fueron consistentes. Repita la prueba en un lugar más silencioso, sin apuro, respondiendo solo cuando crea oír el tono. Si la repetición confirma alteraciones, siga las recomendaciones médicas indicadas.' });
+  }
+  if (p.recent) {
+    items.push({ lvl: 1, who: 'Nota', title: 'Exposición reciente a ruido intenso',
+      body: 'El ruido fuerte de las últimas horas puede bajar la audición en forma temporal (desplazamiento temporal del umbral). Si hay alteraciones, repita la prueba tras 14 horas de reposo auditivo antes de sacar conclusiones.' });
+  }
+  if (A.asym.masking) {
+    items.push({ lvl: 1, who: 'Nota técnica', title: 'Posible audición cruzada',
+      body: `Con una diferencia de ${Math.abs(A.asym.maxD.d)} dB entre oídos, el tono del lado peor puede haber sido oído por el oído sano (la atenuación interaural de los fonos es de unos 40 dB). Sin enmascaramiento, el oído peor podría estar aún más afectado de lo que muestra el gráfico.` });
+  }
+  return { lvl, items, mutual };
+}
+
+const LEVEL_TXT = [
+  { pill: 'ok', label: 'Sin hallazgos', head: 'Su audición está dentro de rangos normales' },
+  { pill: 'acc', label: 'Control', head: 'Audición normal, con indicaciones de control' },
+  { pill: 'warn', label: 'Consultar', head: 'Se recomienda una evaluación médica' },
+  { pill: 'bad', label: 'Urgente', head: 'Requiere atención médica pronto' }
+];
+
+/* ------------------------------- Informe --------------------------------- */
+function showReport(r, isSample) {
+  S.results = r; S.sample = isSample;
+  const A = analyze(r), D = decide(r, A), p = r.profile;
+  const L = LEVEL_TXT[D.lvl];
+  const date = new Date(r.date);
+  const dstr = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' }) + ', ' + date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+  const devName = { supra: 'Fonos sobre la oreja con cable', insert: 'Intraurales con cable', bt: 'Bluetooth', spk: 'Parlantes' }[p.device];
+  const cell = (t) => t ? `${t.nr ? '≥ ' : ''}${t.hl}${t.nr ? '<span class="muted"> SR</span>' : ''}` : '<span class="muted">—</span>';
+  const avgTxt = (a) => a ? `${a.ge ? '≥ ' : ''}${a.v.toFixed(1)} dB` : '—';
+  const usedF = ALL_FREQS.filter((f) => A.T.R[f] || A.T.L[f]);
+  const shapeTxt = { plana: 'Plana: umbrales similares en graves y agudos.', descendente: 'Descendente: peor en agudos. Es el patrón más común en el envejecimiento auditivo (presbiacusia) y en daño por ruido avanzado.', ascendente: 'Ascendente: peor en graves. Puede deberse a problemas del oído medio, a enfermedad de Ménière o a ruido ambiente durante la prueba; requiere confirmación.', muesca: 'Muesca en 3–6 kHz con recuperación en 8 kHz: patrón típico de exposición a ruido.' };
+
+  const earBlock = (ear) => {
+    const e = A.ears[ear];
+    return `<div class="sheet stack">
+      <h3 class="${ear === 'R' ? 'ear-r' : 'ear-l'}">${EAR_NAME[ear]}</h3>
+      <dl class="kv">
+        <dt>Promedio tonal (0,5–1–2–4 kHz)</dt><dd class="mono">${avgTxt(e.pta)}</dd>
+        <dt>Grado OMS</dt><dd><b>${e.grade ? e.grade.name : '—'}</b></dd>
+        <dt>Promedio en agudos (3–4–6 kHz)</dt><dd class="mono">${avgTxt(e.hf)}</dd>
+        <dt>Forma de la curva</dt><dd>${shapeTxt[e.shape]}</dd>
+        <dt>Muesca por ruido</dt><dd>${e.notch ? `<b>Sí</b>, a ${fmtF(e.notch.f)}, ${e.notch.depth} dB de profundidad` : (A.T[ear][8000] ? 'No' : '<span class="muted">No evaluable en prueba rápida</span>')}</dd>
+        <dt>Sobre lo esperado por edad</dt><dd>${e.overAge.length ? e.overAge.map(fmtF).join(', ') : 'Ninguna frecuencia'}</dd>
+      </dl>
+      ${e.grade ? `<p class="small muted">${e.grade.life}</p>` : ''}
+    </div>`;
+  };
+
+  const tipsHealthy = [
+    '<b>Regla 60/60:</b> con audífonos, no más del 60 % del volumen y no más de 60 minutos seguidos. Luego descanse los oídos.',
+    '<b>Límite semanal de la OMS:</b> hasta 80 dB(A) durante 40 horas a la semana para adultos (75 dB para niños). Cada 3 dB más, la mitad del tiempo seguro (estándar OMS‑UIT H.870). Active el límite de volumen y el aviso de exposición de su teléfono.',
+    'Prefiera audífonos con <b>cancelación de ruido</b>: al aislar el ruido externo, se escucha bien con menos volumen.',
+    'En conciertos y discotecas, use <b>tapones de alta fidelidad</b>, aléjese de los parlantes y tome pausas en zonas tranquilas. Un zumbido después de un evento es una señal de daño.',
+    'No use cotonitos dentro del oído: empujan la cera y pueden lesionar el tímpano. La cera sale sola.',
+    'Cuide su salud general: hipertensión, diabetes y tabaquismo dañan la irrigación del oído interno.',
+    'Consulte a su médico antes de usar fármacos ototóxicos conocidos (algunos antibióticos aminoglucósidos, quimioterapia con cisplatino, dosis altas de aspirina) y avise si aparece zumbido.',
+    'Controle su audición periódicamente. Si necesita audífonos, úselos: la pérdida auditiva no tratada es el principal factor de riesgo modificable de demencia (Comisión Lancet, 2024).'
+  ];
+  const tipsIndustrial = [
+    '<b>Límite legal en Chile (DS 594):</b> 85 dB(A) para 8 horas, con regla de intercambio de 3 dB. Tiempos máximos sin protección: 85 dB → 8 h · 88 dB → 4 h · 91 dB → 2 h · 94 dB → 1 h · 97 dB → 30 min · 100 dB → 15 min. Peak máximo: 140 dB(C).',
+    '<b>Prueba rápida:</b> si a un metro de distancia tiene que levantar la voz para que lo entiendan, el ruido probablemente supera 85 dB(A).',
+    '<b>Use la protección el 100 % del tiempo de exposición.</b> Quitársela 30 minutos en una jornada de 8 horas reduce un protector de 30 dB a una protección real de unos 12 dB.',
+    '<b>Inserte bien los tapones de espuma:</b> enróllelos hasta dejarlos delgados, tire la oreja hacia arriba y atrás con la otra mano, introdúzcalos y sosténgalos 20–30 segundos mientras se expanden. Bien puestos, no se ven de frente.',
+    '<b>La atenuación real es menor que la de la caja:</b> NIOSH recomienda descontar 25 % del NRR en orejeras, 50 % en tapones moldeables y 70 % en otros tapones. Pida una prueba de ajuste (fit‑test) si su empresa la ofrece.',
+    'Sobre 100 dB(A) use <b>doble protección</b> (tapón más orejera). Evite la sobreprotección en ruidos moderados: debe poder oír alarmas y señales de advertencia.',
+    'Mantenga las orejeras: cambie las almohadillas endurecidas o rotas; las patillas de lentes y el pelo debajo de la orejera rompen el sello.',
+    '<b>Solventes y ruido se potencian:</b> tolueno, estireno, xileno, plomo y monóxido de carbono son ototóxicos. Si trabaja con ellos, informe a su programa de vigilancia aunque el ruido esté bajo el límite (OSHA/NIOSH, 2018).',
+    'La empresa debe priorizar controles en la fuente (encierro de máquinas, silenciadores, mantención, rotación de puestos) antes que la protección personal. Usted tiene derecho a conocer las mediciones de ruido de su puesto.',
+    'Haga su audiometría de control con <b>reposo auditivo</b> previo (sin ruido intenso las 14 horas anteriores) para que el resultado refleje su audición real.',
+    'Si nota zumbido al final de la jornada, oídos tapados o que le cuesta entender a sus compañeros, avise a prevención de riesgos y consulte en la mutualidad: la hipoacusia por ruido es permanente, pero se puede detener su avance.'
+  ];
+
+  const html = `
+  <div class="stack-lg">
+    <div class="stack">
+      <div class="row" style="justify-content:space-between"><p class="eyebrow">Informe audiométrico</p>${isSample ? '<span class="example-tag">Ejemplo, datos ficticios</span>' : ''}</div>
+      <h1>${p.name ? esc(p.name) : 'Resultado de su audiometría'}</h1>
+      <p class="muted small">${dstr} · ${p.age} años${p.sex ? ' · ' + (p.sex === 'M' ? 'Hombre' : 'Mujer') : ''}${p.job ? ' · ' + esc(p.job) : ''}</p>
+    </div>
+
+    <div class="verdict l${D.lvl}"><i></i><div>
+      <span><span class="pill ${L.pill}">${L.label}</span></span>
+      <h2>${L.head}</h2>
+      <p>${A.overall ? `Según la clasificación de la OMS (2021), aplicada al oído que oye mejor, su resultado corresponde a <b>${A.overall.name.toLowerCase()}</b>.` : ''} ${A.overall && A.overall.max === 20 && D.lvl >= 2 ? 'Aun así, hay hallazgos que conviene revisar: vea el detalle por oído y las recomendaciones.' : ''} ${A.unilateral ? '<b>La pérdida es unilateral</b>: un oído normal y el otro con pérdida moderada o mayor.' : ''}</p>
+      <p class="small"><b>Dónde acudir:</b> ${[...new Set(D.items.filter((i) => i.lvl >= 2).map((i) => i.who))].join(' · ') || 'No requiere consulta; mantenga controles preventivos.'}</p>
+    </div></div>
+
+    <div class="sheet stack">
+      <h3>Audiograma</h3>
+      <div class="figure"><svg class="audiogram" id="ag-report" role="img" aria-label="Audiograma de ambos oídos"></svg></div>
+      <div class="legend"><span><b class="ear-r">O</b> Oído derecho</span><span><b class="ear-l">X</b> Oído izquierdo</span><span><b>↘</b> Sin respuesta al máximo disponible</span><span>‑ ‑ ‑ Mediana esperada para su edad${p.sex ? ' y sexo' : ''} (ISO 7029)</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Frecuencia</th>${usedF.map((f) => `<th class="num">${fmtF(f)}</th>`).join('')}</tr></thead>
+        <tbody>
+          <tr><td class="ear-r">Derecho</td>${usedF.map((f) => `<td class="num">${cell(A.T.R[f])}</td>`).join('')}</tr>
+          <tr><td class="ear-l">Izquierdo</td>${usedF.map((f) => `<td class="num">${cell(A.T.L[f])}</td>`).join('')}</tr>
+          <tr><td class="muted">Esperado por edad</td>${usedF.map((f) => `<td class="num muted">${Math.round(expectedShift(p.age, p.sex, f))}</td>`).join('')}</tr>
+        </tbody></table></div>
+      <p class="small muted">Valores en dB HL. 0 dB HL es el umbral promedio de adultos jóvenes con audición normal; números más altos significan peor audición. SR: sin respuesta al nivel máximo que entrega el equipo.</p>
+    </div>
+
+    <div class="grid2">${earBlock('R')}${earBlock('L')}</div>
+
+    <div class="sheet stack">
+      <h3>Recomendaciones médicas</h3>
+      <div class="reco">${D.items.map((it) => `<div class="reco-item">
+        <span><span class="pill ${['ok', 'acc', 'warn', 'bad'][it.lvl]}">${esc(it.who)}</span></span>
+        <b>${it.title}</b><p class="small">${it.body}</p></div>`).join('')}</div>
+    </div>
+
+    <div class="sheet">
+      <details ${p.occ ? 'open' : ''}><summary>Si trabaja en una industria con ruido</summary><ul class="tips">${tipsIndustrial.map((t) => `<li>${t}</li>`).join('')}</ul></details>
+      <details><summary>Cómo mantener una audición sana</summary><ul class="tips">${tipsHealthy.map((t) => `<li>${t}</li>`).join('')}</ul></details>
+      <details><summary>Calidad de la prueba</summary>
+        <div class="stack">
+          ${A.reliability.good ? '<p class="note ok">Respuestas consistentes: la repetición a 1 kHz coincidió y no hubo respuestas a intervalos sin tono.</p>' : `<div class="note warn"><ul class="tips">${A.reliability.issues.map((i) => `<li>${i}</li>`).join('')}</ul></div>`}
+          <dl class="kv small">
+            <dt>Equipo</dt><dd>${devName}${p.device === 'bt' ? ' (puede alterar el nivel y el retardo de los tonos)' : ''}</dd>
+            <dt>Tipo de prueba</dt><dd>${p.mode === 'full' ? 'Completa, 8 frecuencias' : 'Rápida, 5 frecuencias'}</dd>
+            <dt>Corrección de calibración</dt><dd class="mono">${r.cal > 0 ? '+' : ''}${r.cal} dB</dd>
+            <dt>Repetición a 1 kHz</dt><dd class="mono">${A.reliability.rtd.length ? A.reliability.rtd.map((d) => d + ' dB').join(' / ') : '—'}</dd>
+            <dt>Intervalos de control sin tono</dt><dd class="mono">${r.stats.falsePos} respuestas de ${r.stats.catchTrials}</dd>
+            <dt>Tonos presentados</dt><dd class="mono">${r.stats.presentations}</dd>
+          </dl>
+        </div>
+      </details>
+      <details><summary>Método y fuentes científicas</summary>
+        <div class="stack small">
+          <p>Audiometría tonal liminar por vía aérea. Tonos puros pulsados de 250 a 8000 Hz presentados en cada oído por separado. Umbral obtenido con el método de Hughson‑Westlake modificado: tras cada respuesta el nivel baja 10 dB y tras cada falta de respuesta sube 5 dB; el umbral es el nivel más bajo con dos respuestas en tramos ascendentes. Se repite 1 kHz para medir la confiabilidad y se intercalan intervalos sin tono para detectar respuestas falsas. Clasificación según el promedio tonal de 0,5, 1, 2 y 4 kHz (OMS, 2021). Muesca por ruido según Coles et al. (2000). Referencia por edad según ISO 7029.</p>
+          <p><b>Limitaciones:</b> los audífonos de consumo no tienen calibración certificada (ISO 389), no se mide la vía ósea, no se usa enmascaramiento y el ruido ambiente puede elevar los umbrales en graves. El resultado orienta, no diagnostica.</p>
+          <ol class="refs">
+            <li>ISO 8253‑1:2010. Acoustics — Audiometric test methods — Part 1: Pure‑tone air and bone conduction audiometry.</li>
+            <li>American Speech‑Language‑Hearing Association (2005). Guidelines for Manual Pure‑Tone Threshold Audiometry.</li>
+            <li>Carhart R, Jerger JF (1959). Preferred method for clinical determination of pure‑tone thresholds. J Speech Hear Disord 24:330–345.</li>
+            <li>Organización Mundial de la Salud (2021). World Report on Hearing. Ginebra: OMS.</li>
+            <li>Coles RRA, Lutman ME, Buffin JT (2000). Guidelines on the diagnosis of noise‑induced hearing loss for medicolegal purposes. Clin Otolaryngol 25:264–273.</li>
+            <li>ISO 7029:2000/2017. Acoustics — Statistical distribution of hearing thresholds related to age and gender.</li>
+            <li>ISO 389‑7:2005. Reference threshold of hearing under free‑field and diffuse‑field listening conditions.</li>
+            <li>Mahomed F, Swanepoel DW, Eikelboom RH, Soer M (2013). Validity of automated threshold audiometry: a systematic review and meta‑analysis. Ear Hear 34(6):745–752.</li>
+            <li>Burk MH, Wiley TL (2004). Continuous versus pulsed tones in audiometry. Am J Audiol 13(1):54–61.</li>
+            <li>Chandrasekhar SS et al. (2019). Clinical Practice Guideline: Sudden Hearing Loss (Update). Otolaryngol Head Neck Surg 161(1_suppl):S1–S45.</li>
+            <li>Ministerio de Salud de Chile. Protocolo sobre normas mínimas para el desarrollo de programas de vigilancia de la pérdida auditiva por exposición a ruido en los lugares de trabajo (PREXOR).</li>
+            <li>Decreto Supremo N° 594 (1999), MINSAL. Reglamento sobre condiciones sanitarias y ambientales básicas en los lugares de trabajo.</li>
+            <li>Ley N° 16.744 (1968). Establece normas sobre accidentes del trabajo y enfermedades profesionales.</li>
+            <li>NIOSH (1998). Criteria for a Recommended Standard: Occupational Noise Exposure. DHHS (NIOSH) Pub. 98‑126.</li>
+            <li>OSHA/NIOSH (2018). Preventing Hearing Loss Caused by Chemical (Ototoxicity) and Noise Exposure. SHIB 03‑08‑2018.</li>
+            <li>OMS‑UIT (2019). Safe listening devices and systems: a WHO‑ITU standard (H.870).</li>
+            <li>Livingston G et al. (2024). Dementia prevention, intervention, and care: 2024 report of the Lancet standing Commission. Lancet 404:572–628.</li>
+          </ol>
+        </div>
+      </details>
+    </div>
+    <p class="note small">Este informe proviene de una prueba de tamizaje realizada con un equipo no calibrado y no constituye un diagnóstico médico. Ante cualquier duda o síntoma, consulte a un otorrinolaringólogo o a su mutualidad.</p>
+  </div>`;
+  $('report').innerHTML = html;
+  drawAudiogram($('ag-report'), A.T, { age: p.age, sex: p.sex });
+  $('copy-fallback').hidden = true;
+  go('report');
+}
+
+function reportText(r) {
+  const A = analyze(r), D = decide(r, A), p = r.profile;
+  const fs = ALL_FREQS.filter((f) => A.T.R[f] || A.T.L[f]);
+  const c = (t) => t ? (t.nr ? '>=' + t.hl + 'SR' : String(t.hl)) : '-';
+  const pad = (s, n) => String(s).padStart(n);
+  const lines = [];
+  lines.push('INFORME AUDIOMÉTRICO (tamizaje, equipo no calibrado)' + (S.sample ? ' — EJEMPLO, DATOS FICTICIOS' : ''));
+  lines.push(`Fecha: ${new Date(r.date).toLocaleString('es-CL')}`);
+  lines.push(`${p.name ? p.name + ' · ' : ''}${p.age} años${p.job ? ' · ' + p.job : ''}${p.occ ? ' · expuesto a ruido laboral' : ''}`);
+  lines.push('');
+  lines.push('Umbrales (dB HL)');
+  lines.push(pad('Hz', 10) + fs.map((f) => pad(f, 7)).join(''));
+  lines.push(pad('Derecho', 10) + fs.map((f) => pad(c(A.T.R[f]), 7)).join(''));
+  lines.push(pad('Izquierdo', 10) + fs.map((f) => pad(c(A.T.L[f]), 7)).join(''));
+  lines.push('');
+  for (const e of ['R', 'L']) {
+    const x = A.ears[e];
+    lines.push(`${EAR_NAME[e]}: PTA ${x.pta ? x.pta.v.toFixed(1) : '-'} dB · ${x.grade ? x.grade.name : '-'}${x.notch ? ` · muesca por ruido a ${fmtF(x.notch.f)}` : ''}`);
+  }
+  if (A.asym.yes) lines.push(`Asimetría entre oídos: ${Math.abs(Math.round(A.asym.ptaDiff))} dB en PTA (peor: ${EAR_NAME[A.asym.worse]})`);
+  lines.push('');
+  lines.push('CONCLUSIÓN: ' + LEVEL_TXT[D.lvl].head);
+  D.items.forEach((it) => lines.push(`- [${it.who}] ${it.title}: ${it.body.replace(/<[^>]+>/g, '')}`));
+  if (!A.reliability.good) lines.push('Confiabilidad: ' + A.reliability.issues.join(' '));
+  return lines.join('\n');
+}
+
+/* ------------------------------ Acciones --------------------------------- */
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+// Dentro de la app Android, la página recibe window.AndroidApp (compartir, copiar, imprimir).
+const NATIVE = window.AndroidApp || null;
+$('btn-share').hidden = !(NATIVE || navigator.share);
+$('btn-share').addEventListener('click', () => {
+  const txt = reportText(S.results);
+  if (NATIVE) NATIVE.share(txt);
+  else navigator.share({ title: 'Informe audiométrico', text: txt }).catch(() => {});
+});
+$('btn-copy').addEventListener('click', () => {
+  const txt = reportText(S.results);
+  if (NATIVE) { NATIVE.copy(txt); return; }
+  const fallback = () => { const ta = $('copy-fallback'); ta.value = txt; ta.hidden = false; ta.focus(); ta.select(); toast('Seleccione el texto y cópielo.'); };
+  try {
+    navigator.clipboard.writeText(txt).then(() => toast('Informe copiado al portapapeles'), fallback);
+  } catch (e) { fallback(); }
+});
+let canPrint = false;
+try { canPrint = !!NATIVE || window.self === window.top; } catch (e) { canPrint = false; }
+$('btn-print').hidden = !canPrint;
+$('btn-print').addEventListener('click', () => { document.querySelectorAll('#report details').forEach((d) => d.open = true); if (NATIVE) NATIVE.print(); else window.print(); });
+
+// Botón Atrás de Android: vuelve una etapa; devuelve false en el inicio para cerrar la app.
+window.appBack = () => {
+  const cur = SCREENS.find((s) => !$('scr-' + s).hidden);
+  if (cur === 'intro') return false;
+  if (cur === 'test' && S.running) { $('abort-confirm').hidden = false; return true; }
+  go({ datos: 'intro', cal: 'datos', test: 'cal', report: 'intro' }[cur]);
+  return true;
+};
+$('btn-new').addEventListener('click', () => go('datos'));
+
+/* ------------------------------ Historial -------------------------------- */
+const HKEY = 'audiometria.historial.v1';
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch (e) { return []; } }
+function saveHistory(r) { try { const h = loadHistory(); h.unshift(r); localStorage.setItem(HKEY, JSON.stringify(h.slice(0, 12))); } catch (e) {} }
+function renderHistory() {
+  const h = loadHistory();
+  $('history-box').hidden = !h.length;
+  $('history-list').innerHTML = h.map((r, i) => {
+    let g = '';
+    try { const A = analyze(r); g = `R ${A.ears.R.pta ? A.ears.R.pta.v.toFixed(0) : '—'} dB · L ${A.ears.L.pta ? A.ears.L.pta.v.toFixed(0) : '—'} dB`; } catch (e) {}
+    return `<div class="history-item"><span>${new Date(r.date).toLocaleDateString('es-CL')} · ${r.profile.name ? esc(r.profile.name) + ' · ' : ''}<span class="mono small">${g}</span></span><button class="btn quiet" data-h="${i}">Ver informe</button></div>`;
+  }).join('');
+  $('history-list').querySelectorAll('[data-h]').forEach((b) => b.addEventListener('click', () => showReport(h[+b.dataset.h], false)));
+}
+
+/* ------------------------------- Ejemplo --------------------------------- */
+const SAMPLE = {
+  id: 0, date: new Date().toISOString(), cal: 0,
+  profile: { name: 'Ejemplo: operador de planta', age: 45, sex: 'M', job: 'Operador de extrusora', occ: true, years: 15, hours: 9, prot: 'aveces', prexor: 'nosabe',
+    tinnitus: true, noiseDiff: true, device: 'supra', mode: 'full', first: 'R' },
+  thr: {
+    R: { 250: { hl: 10 }, 500: { hl: 10 }, 1000: { hl: 15 }, 2000: { hl: 20 }, 3000: { hl: 40 }, 4000: { hl: 50 }, 6000: { hl: 40 }, 8000: { hl: 25 } },
+    L: { 250: { hl: 10 }, 500: { hl: 5 }, 1000: { hl: 10 }, 2000: { hl: 15 }, 3000: { hl: 30 }, 4000: { hl: 45 }, 6000: { hl: 35 }, 8000: { hl: 20 } }
+  },
+  retest: { R: { hl: 15 }, L: { hl: 10 } }, unstable: [],
+  stats: { catchTrials: 9, falsePos: 0, spontaneous: 1, presentations: 142 }
+};
+$('btn-sample').addEventListener('click', () => showReport(SAMPLE, true));
+
+/* ------------------------- App instalable (PWA) -------------------------- */
+(() => {
+  let top = true;
+  try { top = window.self === window.top; } catch (e) { top = false; }
+  // Solo cuando se publica como sitio web (no dentro de la app Android ni de una vista incrustada).
+  if (!top || NATIVE || !/^https?:$/.test(location.protocol)) return;
+  if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (standalone) return;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('audiometria:installDismissed') === '1'; } catch (e) {}
+  if (dismissed) return;
+  const box = $('install-box');
+  $('install-close').addEventListener('click', () => { box.hidden = true; try { localStorage.setItem('audiometria:installDismissed', '1'); } catch (e) {} });
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (isIOS) {
+    $('install-text').textContent = 'Instálela en su iPhone: en Safari toque Compartir y luego “Agregar a inicio”.';
+    $('install-btn').hidden = true; box.hidden = false; return;
+  }
+  let deferred = null;
+  addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferred = e;
+    $('install-text').textContent = 'Instale Audiometría en su celular y úsela aunque no tenga internet.';
+    box.hidden = false;
+  });
+  $('install-btn').addEventListener('click', async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    await deferred.userChoice.catch(() => null);
+    deferred = null; box.hidden = true;
+  });
+  addEventListener('appinstalled', () => { box.hidden = true; });
+})();
+
+/* -------------------------------- Inicio --------------------------------- */
+drawAudiogram($('ag-intro'), SAMPLE.thr, { age: 45, sex: 'M' });
+go('intro');
+</script>
+</body>
+</html>

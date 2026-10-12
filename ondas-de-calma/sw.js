@@ -1,5 +1,5 @@
 // Service worker de Ondas de Calma: guarda la app para usarla sin conexión.
-const VERSION = "odc-v1";
+const VERSION = "odc-v2";
 const CORE = [
   "./",
   "./index.html",
@@ -17,7 +17,7 @@ self.addEventListener("install", e => {
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k.startsWith("odc-") && k !== VERSION).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -26,6 +26,8 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  // Audiometría vive en /audiometria/ con su propio service worker.
+  if (url.origin === self.location.origin && url.pathname.includes("/audiometria/")) return;
 
   // Página: primero la red (para recibir actualizaciones), si falla la copia guardada.
   if (req.mode === "navigate") {

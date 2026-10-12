@@ -17,3 +17,10 @@ La app es una PWA: se instala desde el navegador y funciona sin internet.
 3. Abre esa dirección en el celular:
    - **Android (Chrome):** toca **Instalar** en el aviso de la app, o menú ⋮ → *Instalar app*.
    - **iPhone (Safari):** botón Compartir → *Agregar a inicio*.
+
+## Audiometría Tonal
+
+Audiometría tonal por vía aérea (250–8000 Hz, método Hughson‑Westlake) con audiograma, grado OMS,
+detección de muesca por ruido e informe con recomendaciones (otorrino o mutualidad).
+Se publica junto a Ondas de Calma en `https://lvicencio1974-ux.github.io/ebook-kompra/audiometria/`
+y se instala igual: Chrome → **Instalar** (o menú ⋮ → *Instalar app*); en iPhone, Safari → Compartir → *Agregar a inicio*.
