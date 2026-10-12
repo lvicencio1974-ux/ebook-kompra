@@ -1225,8 +1225,15 @@ $('btn-sample').addEventListener('click', () => showReport(SAMPLE, true));
     $('install-btn').hidden = true; box.hidden = false; return;
   }
   let deferred = null;
+  // Si Chrome no ofrece su botón (ya instalada, o el navegador no lo admite), se muestran los pasos manuales.
+  setTimeout(() => {
+    if (deferred || !box.hidden) return;
+    $('install-text').innerHTML = 'Para instalar la app: toque el menú <b>⋮</b> del navegador y elija <b>Instalar app</b> o <b>Agregar a pantalla principal</b>. Si ya la instaló, ábrala desde el ícono <b>Audiometría</b>.';
+    $('install-btn').hidden = true; box.hidden = false;
+  }, 2500);
   addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault(); deferred = e;
+    $('install-btn').hidden = false;
     $('install-text').textContent = 'Instale Audiometría en su celular y úsela aunque no tenga internet.';
     box.hidden = false;
   });

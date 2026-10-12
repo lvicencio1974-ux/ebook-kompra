@@ -1,5 +1,5 @@
 // Service worker de Audiometría Tonal: guarda la app para usarla sin conexión.
-const VERSION = "audiometria-v1";
+const VERSION = "audiometria-v2";
 const CORE = [
   "./",
   "./index.html",
