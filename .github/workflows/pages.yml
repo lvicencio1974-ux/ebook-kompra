@@ -1,9 +1,9 @@
-name: Publicar Ondas de Calma
+name: Publicar apps (Ondas de Calma y Audiometría)
 
 on:
   push:
     branches: [main]
-    paths: ["ondas-de-calma/**", ".github/workflows/pages.yml"]
+    paths: ["ondas-de-calma/**", "audiometria/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -24,8 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - name: Armar el sitio
+        run: |
+          mkdir _site
+          cp -r ondas-de-calma/. _site/
+          cp -r audiometria _site/audiometria
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ondas-de-calma
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
