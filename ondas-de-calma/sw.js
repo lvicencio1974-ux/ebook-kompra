@@ -1,5 +1,5 @@
 // Service worker de Ondas de Calma: guarda la app para usarla sin conexión.
-const VERSION = "odc-v2";
+const VERSION = "odc-v3";
 const CORE = [
   "./",
   "./index.html",
