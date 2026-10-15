@@ -276,6 +276,14 @@ section { display: flex; flex-direction: column; gap: 14px; }
           <option value="off">Sin guía</option>
         </select>
       </div>
+      <div class="field">
+        <label for="cueMode">Aviso para inhalar y exhalar</label>
+        <select id="cueMode">
+          <option value="tone" selected>Tonos suaves (sube: inhala · baja: exhala)</option>
+          <option value="voice">Voz (“Inhala”, “Exhala”)</option>
+          <option value="off">Solo visual</option>
+        </select>
+      </div>
     </div>
   </section>
 
@@ -361,11 +369,11 @@ section { display: flex; flex-direction: column; gap: 14px; }
     },
     caminar: {
       name: "Caminando", hint: "Al aire libre",
-      note: "Mantén los ojos en el camino y el volumen bajo para oír tu entorno. El volumen máximo queda limitado en este modo.",
+      note: "Mantén los ojos en el camino y el volumen bajo para oír tu entorno. La respiración se guía con sonido: inhala cuando el tono sube y exhala cuando baja. El volumen máximo queda limitado en este modo.",
       warn: true, maxVol: 0.5,
       sessions: [
         { id: "walk", name: "Paseo consciente", beat: [10, 10], carrier: 250, min: 15, breath: [4, 6],
-          desc: "Alfa suave. Inhala en unos 4 pasos y exhala en 6, a tu ritmo.",
+          desc: "Alfa suave. Inhala con el tono que sube (unos 4 pasos) y exhala con el que baja (unos 6 pasos).",
           ev: "Alfa con respiración lenta; evidencia del pulso solo en reposo." },
         { id: "decomp", name: "Descompresión tras el trabajo", beat: [12, 8], ramp: 10, carrier: 230, min: 20, breath: [4, 6],
           desc: "Baja de alfa alto a alfa bajo en el trayecto a casa.",
@@ -510,6 +518,8 @@ section { display: flex; flex-direction: column; gap: 14px; }
   function buildGraph(s) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) { toast("Tu navegador no permite generar audio. Prueba con Chrome, Safari o Firefox actualizados."); return null; }
+    // En iPhone, sin esto el modo silencio apaga el sonido de la app.
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
     const ac = new AC();
     const master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
     const beatGain = ac.createGain(); beatGain.gain.value = beatLevel(); beatGain.connect(master);
@@ -522,7 +532,8 @@ section { display: flex; flex-direction: column; gap: 14px; }
     oscL.frequency.setValueAtTime(s.carrier, t0);
     oscR.frequency.setValueAtTime(s.carrier + s.beat[0], t0);
     oscL.start(t0); oscR.start(t0);
-    const g = { ac, master, beatGain, noiseGain, oscL, oscR, noiseSrc: null, t0 };
+    const cueGain = ac.createGain(); cueGain.connect(master);
+    const g = { ac, master, beatGain, noiseGain, cueGain, oscL, oscR, noiseSrc: null, t0 };
     setNoise(g);
     return g;
   }
@@ -579,10 +590,52 @@ section { display: flex; flex-direction: column; gap: 14px; }
     clearInterval(tick); tick = setInterval(onTick, 250);
     updateButtons();
   }
+  // ---------- Avisos de respiración (para no tener que mirar la pantalla) ----------
+  function playCue(at, inhale) {
+    const { ac, cueGain } = audio;
+    const o = ac.createOscillator(), g = ac.createGain();
+    const lo = 330, hi = 494, lvl = Math.max(0.012, beatLevel() * 1.6);
+    o.frequency.setValueAtTime(inhale ? lo : hi, at);
+    o.frequency.exponentialRampToValueAtTime(inhale ? hi : lo, at + 0.7);
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(lvl, at + 0.08);
+    g.gain.setValueAtTime(lvl, at + 0.55);
+    g.gain.linearRampToValueAtTime(0, at + 0.9);
+    o.connect(g).connect(cueGain); o.start(at); o.stop(at + 1);
+  }
+  function speak(text) {
+    try {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "es-ES"; u.rate = 0.8; u.volume = 0.8;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+  function scheduleCues() {
+    if (!audio || state !== "playing") return;
+    const pat = breathPattern(), mode = $("cueMode").value, now = elapsed();
+    if (!pat || mode === "off") { audio.cueUntil = now; return; }
+    const [inh, exh] = pat, cyc = inh + exh;
+    // Los tonos se programan con anticipación en el reloj de audio; la voz se dice en el momento.
+    const horizon = mode === "tone" ? now + 1.5 : now + 0.05;
+    let from = audio.cueUntil ?? -0.01;
+    if (from < now - 1) from = now - 0.3; // tras un bloqueo de pantalla, no repetir avisos atrasados
+    for (let k = Math.max(0, Math.floor(from / cyc)); k * cyc <= horizon; k++) {
+      for (const [t, inhale] of [[k * cyc, true], [k * cyc + inh, false]]) {
+        if (t <= from || t > horizon) continue;
+        if (mode === "tone") playCue(audio.start + t, inhale);
+        else speak(inhale ? "Inhala" : "Exhala");
+      }
+    }
+    audio.cueUntil = horizon;
+  }
+
   function onTick() {
     if (!audio) return;
     const t = elapsed();
     showSession();
+    scheduleCues();
     const mins = Math.floor(t / 60);
     if (mins > audio.counted) { store.set("minutes", store.get("minutes", 0) + (mins - audio.counted)); audio.counted = mins; renderStats(); }
     if (t >= audio.session.min * 60) finish(true);
@@ -742,6 +795,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
     closePrep(); start();
   });
   $("cancelPrep").addEventListener("click", closePrep);
+  $("cueMode").addEventListener("change", () => { store.set("cueMode", $("cueMode").value); if (audio) audio.cueUntil = elapsed(); });
   $("stopBtn").addEventListener("click", () => finish(false));
   $("testBtn").addEventListener("click", testHeadphones);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && state === "playing") requestWake(); });
@@ -749,6 +803,7 @@ section { display: flex; flex-direction: column; gap: 14px; }
   $("vol").value = store.get("vol", 30); $("noiseVol").value = store.get("noiseVol", 30);
   $("noiseVolOut").textContent = $("noiseVol").value + "%";
   const savedNoise = store.get("noise", null); if (savedNoise) $("noise").value = savedNoise;
+  const savedCue = store.get("cueMode", null); if (savedCue) $("cueMode").value = savedCue;
   renderTabs(); renderSessions(); renderStats(); updateButtons();
   requestAnimationFrame(draw);
 })();
